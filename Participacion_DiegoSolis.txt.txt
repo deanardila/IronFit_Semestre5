@@ -1,0 +1,4 @@
+Nombre: Diego Solis
+Rol: Frontend
+Actividad: Apoyo en diseño de interfaz de entrenador
+Fecha: 25/02/2026
