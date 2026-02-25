@@ -1,0 +1,4 @@
+Nombre: Roberto De Oro
+Rol: Backend
+Responsabilidad: Apoyo en módulo de asistencia
+Fecha: 25/02/2026
