@@ -1,0 +1,232 @@
+/* ================== MI PLAN (CLIENTE) ================== */
+
+/* Contenedor principal de la página */
+.plan-layout {
+    min-height: 100vh;
+    background: radial-gradient(circle at top, #101010 0, #050505 45%, #000 100%);
+    color: var(--ironfit-text);
+    padding: 1.75rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ---------- HEADER ---------- */
+
+.plan-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--ironfit-radius-lg);
+    background: linear-gradient(145deg, #111111, #050505);
+    border: 1px solid var(--ironfit-border);
+    box-shadow: var(--ironfit-shadow-soft);
+}
+
+.plan-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.plan-header h1 {
+    margin: 0;
+    font-size: 1.35rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.plan-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* ---------- BOTÓN VOLVER ---------- */
+
+.btn-volver {
+    border: none;
+    border-radius: 999px;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(0, 0, 0, 0.75);
+    color: var(--ironfit-text);
+    border: 1px solid var(--ironfit-border);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-volver:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 138, 31, 0.5);
+    transform: translateY(-1px);
+}
+
+/* ---------- CONTENIDO DEL PLAN ---------- */
+
+.plan-content {
+    padding: 1.5rem;
+    border-radius: var(--ironfit-radius-lg);
+    background: linear-gradient(145deg, var(--ironfit-surface), #050505);
+    border: 1px solid var(--ironfit-border);
+    box-shadow: var(--ironfit-shadow-soft);
+}
+
+.plan-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-card {
+    padding: 1rem;
+    border-radius: var(--ironfit-radius-md);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 138, 31, 0.2);
+}
+
+.info-card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ironfit-text-muted);
+}
+
+.info-card p {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--ironfit-text);
+}
+
+/* Progreso visual */
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff8a1f, #ffb347);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+/* ---------- TABLA DE RUTINAS ---------- */
+
+.rutinas-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    border-radius: var(--ironfit-radius-lg);
+    overflow: hidden;
+    background: var(--ironfit-surface);
+    box-shadow: var(--ironfit-shadow-soft);
+}
+
+.rutinas-tabla thead {
+    background: linear-gradient(135deg, var(--ironfit-surface-alt), #111111);
+}
+
+.rutinas-tabla th,
+.rutinas-tabla td {
+    padding: 0.65rem 0.9rem;
+    font-size: 0.88rem;
+    border-bottom: 1px solid rgba(38, 38, 38, 0.9);
+}
+
+.rutinas-tabla th {
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.78rem;
+    color: var(--ironfit-text-muted);
+}
+
+.rutinas-tabla tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.35);
+}
+
+.rutinas-tabla tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Badge de estado */
+.estado-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.estado-badge.completado {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.estado-badge.en-progreso {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fde047;
+    border: 1px solid rgba(234, 179, 8, 0.35);
+}
+
+.estado-badge.pendiente {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fda4af;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+/* Mensaje cuando no hay plan o cargando */
+section p {
+    font-size: 0.9rem;
+    color: var(--ironfit-text-muted);
+    padding: 1.5rem;
+    text-align: center;
+    background: linear-gradient(145deg, #111111, #050505);
+    border: 1px solid var(--ironfit-border);
+    border-radius: var(--ironfit-radius-lg);
+    box-shadow: var(--ironfit-shadow-soft);
+}
+
+/* ---------- RESPONSIVE GENERAL ---------- */
+
+@media (max-width: 768px) {
+    .plan-layout {
+        padding: 1.25rem 1.1rem;
+    }
+
+    .plan-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .plan-info {
+        grid-template-columns: 1fr;
+    }
+
+    .rutinas-tabla {
+        font-size: 0.82rem;
+    }
+
+    .rutinas-tabla th,
+    .rutinas-tabla td {
+        padding: 0.5rem 0.65rem;
+    }
+}

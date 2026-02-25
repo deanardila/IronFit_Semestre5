@@ -1,0 +1,135 @@
+<div class="dashboard-layout">
+    <!-- HEADER -->
+    <header class="dashboard-header">
+        <div class="dashboard-header-left">
+            <img
+                src="assets/ironfit/logo-horizontal.png"
+                alt="IronFit"
+                class="dashboard-logo"
+            />
+            <span class="dashboard-role-pill">Administrador</span>
+        </div>
+
+        <div class="dashboard-header-right">
+            <span class="dashboard-username">Hola, {{ nombreUsuario }}</span>
+            <button class="dashboard-logout-btn" (click)="logout()">
+                Cerrar sesión
+            </button>
+        </div>
+    </header>
+
+    <!-- BOTÓN MENÚ HAMBURGUESA -->
+    <div class="quick-menu-container">
+        <button class="quick-menu-toggle" (click)="toggleMenu()">
+            <span class="quick-menu-icon">
+                <span></span>
+                <span></span>
+                <span></span>
+            </span>
+            <span class="quick-menu-label">Menú rápido</span>
+        </button>
+    </div>
+
+    <!-- MENÚ FLOTANTE -->
+    <div class="quick-menu-backdrop" *ngIf="showMenu" (click)="closeMenu()"></div>
+
+    <div class="quick-menu-panel" *ngIf="showMenu">
+        <h3 class="quick-menu-title">Accesos del administrador</h3>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/admin/usuarios"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Gestión de usuarios</span>
+                <span class="item-subtitle">Clientes y entrenadores</span>
+            </div>
+            <span class="item-pill">Ver usuarios</span>
+        </button>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/admin/planes-rutinas"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Planes y rutinas</span>
+                <span class="item-subtitle">Auditoría de entrenamiento</span>
+            </div>
+            <span class="item-pill">Ver planes</span>
+        </button>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/admin/ejercicios"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Catálogo de ejercicios</span>
+                <span class="item-subtitle">Ejercicios, categorías y grupos musculares</span>
+            </div>
+            <span class="item-pill">Gestionar</span>
+        </button>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/admin/auditoria"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Auditoría y reportes</span>
+                <span class="item-subtitle">Asistencia y cumplimiento</span>
+            </div>
+            <span class="item-pill">Ver reportes</span>
+        </button>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="dashboard-main">
+        <!-- Resumen rápido -->
+        <section class="dashboard-summary">
+            <!-- CLIENTES ACTIVOS -->
+            <div class="stat-card clickable" (click)="onClientesActivosClick()">
+                <div class="stat-card-header">
+                    <span class="stat-label">Clientes activos</span>
+                </div>
+                <div class="stat-value">{{ (clientesActivos$ | async) ?? 0 }}</div>
+                <div class="stat-footer">este mes</div>
+            </div>
+
+            <!-- ENTRENADORES -->
+            <div class="stat-card clickable" (click)="onEntrenadoresActivosClick()">
+                <div class="stat-card-header">
+                    <span class="stat-label">Entrenadores</span>
+                </div>
+                <div class="stat-value">{{ (entrenadoresActivos$ | async) ?? 0 }}</div>
+                <div class="stat-footer">nuevos</div>
+            </div>
+
+            <!-- EJERCICIOS REGISTRADOS -->
+            <div class="stat-card clickable" (click)="onEjerciciosClick()">
+                <div class="stat-card-header">
+                    <span class="stat-label">Ejercicios registrados</span>
+                </div>
+                <div class="stat-value">{{ (ejerciciosRegistrados$ | async) ?? 0 }}</div>
+                <div class="stat-footer">Catálogo actualizado</div>
+            </div>
+
+            <!-- AUDITORÍAS DEL MES -->
+            <div
+                class="stat-card stat-card--highlight clickable"
+                (click)="onAuditoriasClick()"
+            >
+                <div class="stat-card-header">
+                    <span class="stat-label">Auditorías del mes</span>
+                </div>
+                <div class="stat-value">{{ (auditoriasMes$ | async) ?? 0 }}</div>
+                <div class="stat-footer">Revisa detalles en Reportes</div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+

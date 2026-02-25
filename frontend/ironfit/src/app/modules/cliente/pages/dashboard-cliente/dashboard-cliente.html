@@ -1,0 +1,145 @@
+<div class="dashboard-layout">
+    <!-- HEADER -->
+    <header class="dashboard-header">
+        <div class="dashboard-header-left">
+            <img
+                src="assets/ironfit/logo-horizontal.png"
+                alt="IronFit"
+                class="dashboard-logo"
+            />
+            <span class="dashboard-role-pill">Cliente</span>
+        </div>
+
+        <div class="dashboard-header-right">
+            <span class="dashboard-username">Hola, {{ nombreUsuario }}</span>
+            <button class="dashboard-logout-btn" (click)="logout()">
+                Cerrar sesión
+            </button>
+        </div>
+    </header>
+
+    <!-- BOTÓN MENÚ HAMBURGUESA -->
+    <div class="quick-menu-container">
+        <button class="quick-menu-toggle" (click)="toggleMenu()">
+            <span class="quick-menu-icon">
+                <span></span>
+                <span></span>
+                <span></span>
+            </span>
+            <span class="quick-menu-label">Menú rápido</span>
+        </button>
+    </div>
+
+    <!-- MENÚ FLOTANTE -->
+    <div class="quick-menu-backdrop" *ngIf="showMenu" (click)="closeMenu()"></div>
+
+    <div class="quick-menu-panel" *ngIf="showMenu">
+        <h3 class="quick-menu-title">Accesos del cliente</h3>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/cliente/perfil"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Mi perfil</span>
+                <span class="item-subtitle">Información personal</span>
+            </div>
+            <span class="item-pill">Ver perfil</span>
+        </button>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/cliente/plan"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Mi plan de entrenamiento</span>
+                <span class="item-subtitle">Rutinas y objetivos</span>
+            </div>
+            <span class="item-pill">Ver plan</span>
+        </button>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/cliente/MisRutinas"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Mis rutinas</span>
+                <span class="item-subtitle">Ejercicios asignados</span>
+            </div>
+            <span class="item-pill">Entrenar</span>
+        </button>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/cliente/evaluaciones"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Mis evaluaciones</span>
+                <span class="item-subtitle">Progreso y métricas</span>
+            </div>
+            <span class="item-pill">Ver evaluaciones</span>
+        </button>
+
+        <button
+            class="quick-menu-item"
+            routerLink="/cliente/asistencias"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Mis asistencias</span>
+                <span class="item-subtitle">Historial de entrenamientos</span>
+            </div>
+            <span class="item-pill">Ver asistencias</span>
+        </button>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="dashboard-main">
+        <!-- Resumen rápido -->
+        <section class="dashboard-summary">
+            <!-- PLAN ACTUAL -->
+            <div class="stat-card clickable" (click)="onPlanActualClick()">
+                <div class="stat-card-header">
+                    <span class="stat-label">Plan actual</span>
+                </div>
+                <div class="stat-value">{{ (planActual$ | async) ?? 'N/A' }}</div>
+                <div class="stat-footer">Activo</div>
+            </div>
+
+            <!-- RUTINAS ACTIVAS -->
+            <div class="stat-card clickable" (click)="onRutinasClick()">
+                <div class="stat-card-header">
+                    <span class="stat-label">Mis rutinas</span>
+                </div>
+                <div class="stat-value">{{ (rutinasActivas$ | async) ?? 0 }}</div>
+                <div class="stat-footer">En tu plan</div>
+            </div>
+
+            <!-- MIS ASISTENCIAS -->
+            <div class="stat-card clickable" (click)="onAsistenciasClick()">
+                <div class="stat-card-header">
+                    <span class="stat-label">Mis asistencias</span>
+                </div>
+                <div class="stat-value">{{ (asistenciasEsteMes$ | async) ?? 0 }}</div>
+                <div class="stat-footer">este mes</div>
+            </div>
+
+            <!-- PROGRESO GENERAL -->
+            <div
+                class="stat-card stat-card--highlight clickable"
+                (click)="onProgresoClick()"
+            >
+                <div class="stat-card-header">
+                    <span class="stat-label">Tu progreso</span>
+                </div>
+                <div class="stat-value">{{ (progresoGeneral$ | async) ?? '0%' }}</div>
+                <div class="stat-footer">¡Sigue adelante!</div>
+            </div>
+        </section>
+
+    </main>
+</div>

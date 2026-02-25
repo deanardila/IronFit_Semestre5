@@ -1,0 +1,54 @@
+<div class="planes-layout">
+	<header class="planes-header">
+		<div class="planes-header-left">
+			<button class="btn-volver" (click)="volver()">← Volver</button>
+			<h1>Planes activos</h1>
+		</div>
+		<div class="planes-header-right">
+			<div class="busqueda-container">
+				<input
+					type="text"
+					class="input-busqueda"
+					placeholder="🔍 Buscar plan, cliente o entrenador..."
+					[(ngModel)]="terminoBusqueda"
+					(input)="aplicarFiltros()" />
+			</div>
+			<span class="planes-filtros" *ngIf="terminoBusqueda">Filtrando: "{{ terminoBusqueda }}"</span>
+			<button class="btn-actualizar" (click)="actualizar()">Actualizar</button>
+		</div>
+	</header>
+
+	<section *ngIf="cargando">
+		<p>Cargando planes...</p>
+	</section>
+
+	<section *ngIf="!cargando">
+		<table class="planes-tabla" *ngIf="planesFiltrados.length > 0; else noPlanes">
+			<thead>
+				<tr>
+					<th>ID</th>
+					<th>Nombre</th>
+					<th>Cliente</th>
+					<th>Entrenador</th>
+					<th>Inicio</th>
+					<th>Fin</th>
+					<th>Estado</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr *ngFor="let p of planesFiltrados">
+					<td>{{ p.idPlan }}</td>
+					<td>{{ p.nombrePlan }}</td>
+					<td>{{ p.nombreCliente || '-' }}</td>
+					<td>{{ p.nombreEntrenador || '-' }}</td>
+					<td>{{ p.fechaInicio | date:'yyyy-MM-dd' }}</td>
+					<td>{{ p.fechaFin | date:'yyyy-MM-dd' }}</td>
+					<td><span class="estado-badge activo">{{ p.estado }}</span></td>
+				</tr>
+			</tbody>
+		</table>
+		<ng-template #noPlanes>
+			<p>No hay planes activos.</p>
+		</ng-template>
+	</section>
+</div>

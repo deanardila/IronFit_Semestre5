@@ -1,0 +1,60 @@
+<div class="ironfit-root">
+    <section class="auth-layout">
+        <article class="auth-card">
+        <!-- Lado Logo -->
+        <div class="auth-logo">
+            <img src="assets/ironfit/logo-vertical.png" alt="IronFit - Activa tu potencial" />
+        </div>
+
+        <!-- Lado Formulario -->
+        <div class="auth-content">
+            <h1 class="auth-title">Bienvenido a IronFit</h1>
+            <p class="auth-subtitle">
+            Inicia sesión para <span>auditar entrenamientos, asistencia y progreso</span>.
+            </p>
+
+            <form class="auth-form" (ngSubmit)="login()">
+            <div class="auth-field">
+                <label class="auth-label" for="usuario">Usuario</label>
+                <input
+                id="usuario"
+                name="usuario"
+                type="text"
+                [(ngModel)]="usuario"
+                class="auth-input"
+                placeholder="Ej. admin"
+                autocomplete="username"
+                />
+            </div>
+
+            <div class="auth-field">
+                <label class="auth-label" for="clave">Contraseña</label>
+                <input
+                id="clave"
+                name="clave"
+                type="password"
+                [(ngModel)]="clave"
+                class="auth-input"
+                placeholder="Tu contraseña"
+                autocomplete="current-password"
+                />
+            </div>
+
+            <div class="auth-actions">
+                <button type="submit" class="auth-button">
+                Ingresar
+                </button>
+
+                <div *ngIf="mensajeError" class="auth-error">
+                {{ mensajeError }}
+                </div>
+            </div>
+            </form>
+
+            <div class="auth-footer">
+            Proyecto académico <strong>IronFit</strong> · Auditoría de planes y rutinas
+            </div>
+        </div>
+        </article>
+    </section>
+</div>

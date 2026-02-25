@@ -1,0 +1,81 @@
+<div class="auditoria-layout">
+  <!-- Header -->
+  <header class="auditoria-header">
+    <div class="auditoria-header-left">
+      <button class="btn-volver" (click)="volverAlDashboard()">
+        ← Volver
+      </button>
+      <h1>Reportes de Asistencia</h1>
+    </div>
+    <div class="auditoria-header-right">
+      <!-- CAMPO DE BÚSQUEDA -->
+      <div class="busqueda-container">
+        <input 
+            type="text" 
+            class="input-busqueda" 
+            placeholder="🔍 Buscar por cliente o plan..."
+            [(ngModel)]="terminoBusqueda"
+            (input)="aplicarFiltros()">
+      </div>
+      <button class="btn-aplicar-filtros" (click)="cargarResumen()">
+        🔄 Actualizar
+      </button>
+    </div>
+  </header>
+
+  <!-- Estado de carga -->
+  <section *ngIf="cargando">
+    <p>⏳ Cargando reportes de asistencia...</p>
+  </section>
+
+  <!-- Mensaje de error -->
+  <section *ngIf="!cargando && error">
+    <p style="color: #fda4af;">⚠️ {{ error }}</p>
+  </section>
+
+  <!-- Mensaje si no hay registros -->
+  <section *ngIf="!cargando && !error && resumenesFiltrados.length === 0">
+    <p>📊 No hay registros de asistencia{{ terminoBusqueda ? ' que coincidan con la búsqueda' : ' para mostrar' }}.</p>
+    <p style="font-size: 0.85rem; margin-top: 0.5rem;" *ngIf="!terminoBusqueda">Verifica que existan planes asignados a clientes y asistencias registradas.</p>
+  </section>
+
+  <!-- Tabla de reportes -->
+  <section *ngIf="!cargando && !error && resumenesFiltrados.length > 0">
+    <table class="auditoria-tabla">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Plan</th>
+          <th>Sesiones Asistidas</th>
+          <th>% Asistencia</th>
+          <th>Sesiones Completas</th>
+          <th>% Completas</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of resumenesFiltrados">
+          <td>{{ r.nombreCliente }}</td>
+          <td>{{ r.nombrePlan }}</td>
+          <td>{{ r.sesionesAsistidas }} / {{ r.totalSesionesPlan }}</td>
+          <td>
+            <span class="accion-badge" 
+                  [class.crear]="r.porcentajeAsistencia >= 80"
+                  [class.editar]="r.porcentajeAsistencia >= 50 && r.porcentajeAsistencia < 80"
+                  [class.eliminar]="r.porcentajeAsistencia < 50">
+              {{ r.porcentajeAsistencia | number:'1.0-1' }}%
+            </span>
+          </td>
+          <td>{{ r.sesionesCompletas }} / {{ r.totalSesionesPlan }}</td>
+          <td>
+            <span class="accion-badge"
+                  [class.crear]="r.porcentajeCompletas >= 80"
+                  [class.editar]="r.porcentajeCompletas >= 50 && r.porcentajeCompletas < 80"
+                  [class.eliminar]="r.porcentajeCompletas < 50">
+              {{ r.porcentajeCompletas | number:'1.0-1' }}%
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</div>

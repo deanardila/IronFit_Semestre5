@@ -1,0 +1,210 @@
+/* ================== PLANES Y RUTINAS (ADMIN) ================== */
+
+/* Contenedor principal de la página */
+.planes-layout {
+    min-height: 100vh;
+    background: radial-gradient(circle at top, #101010 0, #050505 45%, #000 100%);
+    color: var(--ironfit-text);
+    padding: 1.75rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ---------- HEADER ---------- */
+
+.planes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--ironfit-radius-lg);
+    background: linear-gradient(145deg, #111111, #050505);
+    border: 1px solid var(--ironfit-border);
+    box-shadow: var(--ironfit-shadow-soft);
+    overflow: hidden; /* evita que el focus ring salga del recuadro */
+}
+
+.planes-header h1 {
+    margin: 0;
+    font-size: 1.35rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* Campo de búsqueda */
+.busqueda-container {
+    flex: 0 1 auto;
+    max-width: 320px;
+    margin-left: auto;
+    /* separa del borde derecho como el botón volver del lado izquierdo */
+    margin-right: 2rem;
+}
+
+.input-busqueda {
+    width: 100%;
+    padding: 0.5rem 0.85rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 138, 31, 0.3);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+
+    &::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    &:focus {
+        outline: none;
+        border-color: #ff8a1f;
+        background: rgba(255, 255, 255, 0.08);
+        /* usa anillo interno para que no se desborde fuera del header */
+        box-shadow: inset 0 0 0 2px rgba(255, 138, 31, 0.25);
+    }
+}
+
+/* Botón volver (estilo compartido con gestión de usuarios) */
+.btn-volver {
+    border: none;
+    border-radius: 999px;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(0, 0, 0, 0.75);
+    color: var(--ironfit-text);
+    border: 1px solid var(--ironfit-border);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-volver:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 138, 31, 0.5);
+    transform: translateY(-1px);
+}
+
+/* ---------- TABLA DE PLANES ---------- */
+
+.planes-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.3rem;
+    border-radius: var(--ironfit-radius-lg);
+    overflow: hidden;
+    background: var(--ironfit-surface);
+    box-shadow: var(--ironfit-shadow-soft);
+}
+
+.planes-tabla thead {
+    background: linear-gradient(135deg, var(--ironfit-surface-alt), #111111);
+}
+
+.planes-tabla th,
+.planes-tabla td {
+    padding: 0.65rem 0.9rem;
+    font-size: 0.88rem;
+    border-bottom: 1px solid rgba(38, 38, 38, 0.9);
+}
+
+.planes-tabla th {
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.78rem;
+    color: var(--ironfit-text-muted);
+}
+
+.planes-tabla tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.35);
+}
+
+.planes-tabla tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Botones de acción */
+.btn-accion {
+    border: none;
+    border-radius: var(--ironfit-radius-md);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #ffb347, #ff8a1f);
+    color: #111111;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.btn-accion:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.8);
+}
+
+.btn-accion:active {
+    transform: translateY(0);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+
+/* Badge de estado */
+.estado-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: rgba(239, 68, 68, 0.15);
+    color: #fda4af;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.estado-badge.activo {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+/* Mensaje cuando no hay planes o cargando */
+section p {
+    font-size: 0.9rem;
+    color: var(--ironfit-text-muted);
+    padding: 1.5rem;
+    text-align: center;
+    background: linear-gradient(145deg, #111111, #050505);
+    border: 1px solid var(--ironfit-border);
+    border-radius: var(--ironfit-radius-lg);
+    box-shadow: var(--ironfit-shadow-soft);
+}
+
+/* ---------- RESPONSIVE GENERAL ---------- */
+
+@media (max-width: 768px) {
+    .planes-layout {
+        padding: 1.25rem 1.1rem;
+    }
+
+    .planes-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .planes-tabla {
+        font-size: 0.82rem;
+    }
+
+    .planes-tabla th,
+    .planes-tabla td {
+        padding: 0.5rem 0.65rem;
+    }
+}
