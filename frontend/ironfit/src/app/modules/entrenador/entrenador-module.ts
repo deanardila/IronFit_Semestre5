@@ -10,9 +10,12 @@ import { MisPlanes } from './pages/mis-planes/mis-planes';
 import { MisRutinas } from './pages/mis-rutinas/mis-rutinas';
 import { Asistencias } from './pages/asistencias/asistencias';
 import { Evaluaciones } from './pages/evaluaciones/evaluaciones';
+import { MiPerfil } from '../cliente/pages/mi-perfil/mi-perfil';
+import { SharedModule } from '../../shared/shared-module';
 
 const routes: Routes = [
   { path: '', component: DashboardEntrenador },
+  { path: 'perfil', component: MiPerfil },
   { path: 'MisClientes', component: MisClientes},
   { path: 'MisPlanes', component: MisPlanes },
   { path: 'MisRutinas', component: MisRutinas },
@@ -33,6 +36,7 @@ const routes: Routes = [
     CommonModule,
     HttpClientModule,
     FormsModule,
+    SharedModule,
     RouterModule.forChild(routes)
   ]
 })

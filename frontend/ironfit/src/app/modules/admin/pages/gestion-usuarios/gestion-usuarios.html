@@ -29,8 +29,15 @@
             <button
                 *ngIf="!vieneDeDashboard"
                 class="btn-crear-usuario"
-                (click)="abrirFormularioCrear()">
-                + Nuevo usuario
+                (click)="toggleFormularioCrear()">
+                {{ mostrarFormularioCrear ? 'Ocultar formulario' : '+ Nuevo usuario' }}
+            </button>
+
+            <button
+                *ngIf="!vieneDeDashboard"
+                class="btn-actualizar"
+                (click)="actualizar()">
+                Actualizar
             </button>
         </div>
     </header>
@@ -50,7 +57,7 @@
 
         <div class="form-row">
         <label>Número documento</label>
-        <input type="text" [(ngModel)]="nuevoUsuario.nroDoc" name="nroDoc" required>
+        <input type="text" [(ngModel)]="nuevoUsuario.numDoc" name="numDoc" required>
         </div>
 
         <div class="form-row">
@@ -65,7 +72,7 @@
 
         <div class="form-row">
         <label>Email</label>
-        <input type="email" [(ngModel)]="nuevoUsuario.email" name="email">
+        <input type="email" [(ngModel)]="nuevoUsuario.correo" name="correo">
         </div>
 
         <div class="form-row">
@@ -112,27 +119,39 @@
                     <th>Apellidos</th>
                     <th>Email</th>
                     <th>Teléfono</th>
-                    <th>Activo</th>
+                    <th>Estado</th>
                     <th>Roles</th>
                 </tr>
             </thead>
             <tbody>
                 <tr *ngFor="let u of usuariosFiltrados">
-                    <td>{{ u.idUsuario }}</td>
-                    <td>{{ u.nroDoc }}</td>
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.numDoc }}</td>
                     <td>{{ u.nombres }}</td>
                     <td>{{ u.apellidos }}</td>
-                    <td>{{ u.email || '-' }}</td>
+                    <td>{{ u.correo || '-' }}</td>
                     <td>{{ u.telefono || '-' }}</td>
                     <td>
-                        <span class="estado-badge" [class.activo]="u.activo">
-                            {{ u.activo ? 'Activo' : 'Inactivo' }}
-                        </span>
+                        <button
+                            type="button"
+                            class="estado-badge"
+                            [class.activo]="u.activo"
+                            [class.inactivo]="!u.activo"
+                            (click)="toggleEstado(u)">
+                            {{ u.activo ? 'ACTIVO' : 'INACTIVO' }}
+                        </button>
                     </td>
                     <td>{{ u.roles && u.roles.length ? u.roles.join(', ') : '-' }}</td>
+                    <td>
+                        <button type="button" class="btn-crear-usuario btn-reset-password" (click)="resetearPassword(u)">
+                            🔒 Reset
+                        </button>
+                    </td>
                 </tr>
             </tbody>
         </table>
+
+
 
         <ng-template #noHayUsuarios>
             <p>No hay usuarios que coincidan con los filtros{{ terminoBusqueda ? ' o la búsqueda' : '' }}.</p>

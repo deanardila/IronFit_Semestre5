@@ -38,6 +38,18 @@
 
         <button
             class="quick-menu-item"
+            routerLink="/admin/perfil"
+            (click)="closeMenu()"
+        >
+            <div class="quick-menu-textblock">
+                <span class="item-title">Mi perfil</span>
+                <span class="item-subtitle">Información personal</span>
+            </div>
+            <span class="item-pill">Ver perfil</span>
+        </button>
+
+        <button
+            class="quick-menu-item"
             routerLink="/admin/usuarios"
             (click)="closeMenu()"
         >

@@ -68,7 +68,7 @@ export class MisClientes implements OnInit {
       return;
     }
     this.clientesFiltrados = this.clientes.filter(c => {
-      const doc = (c.nroDoc || '').toLowerCase();
+      const doc = (c.numDoc || '').toLowerCase();
       const nom = (c.nombres || '').toLowerCase();
       const ape = (c.apellidos || '').toLowerCase();
       return doc.includes(b) || nom.includes(b) || ape.includes(b);

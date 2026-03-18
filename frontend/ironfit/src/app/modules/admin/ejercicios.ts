@@ -1,69 +1,49 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { map, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
 
-export interface EjercicioDTO{
-    idEjercicio: number;
+export interface EjercicioDTO {
+    id: string;
     nombre: string;
     descripcion: string;
-    categoria: CategoriaDTO;
-    grupoMuscular: GrupoMuscularDTO;
-    seriesSugeridas: number;
-    repeticionesSugeridas: number;
-    tipoEquipo: string;
+    categoria: string;
+    grupoMuscular: string;
+    seriesSugeridas: number | null;
+    repeticionesSugeridas: number | null;
+    tipoEquipo: string | null;
 }
 
 export interface EjercicioCrearDTO {
     nombre: string;
     descripcion: string;
-    idCategoria: number;
-    idGrupoMuscular: number;
-    seriesSugeridas: number;
-    repeticionesSugeridas: number;
-    tipoEquipo: string;
+    categoria: string;
+    grupoMuscular: string;
+    seriesSugeridas: number | null;
+    repeticionesSugeridas: number | null;
+    tipoEquipo: string | null;
 }
 
-export interface CategoriaDTO {
-    idCategoria: number;
-    nombre: string;
-    estado: boolean;
-}
-
-export interface GrupoMuscularDTO {
-    idGrupoMuscular: number;
-    nombre: string;
-    estado: boolean;
-}
-
-@Injectable({ providedIn: 'root' })
+@Injectable({
+    providedIn: 'root',
+})
 export class Ejercicios {
-    private baseUrl      = 'http://localhost:8080/api/ejercicios';
-private categoriasUrl = 'http://localhost:8080/api/ejercicios/categorias';
-private gruposUrl     = 'http://localhost:8080/api/ejercicios/grupos-musculares';
+    private apiUrl = 'http://localhost:8081/api/ejercicios';
 
     constructor(private http: HttpClient) {}
 
-    // LISTAR EJERCICIOS (DTO)
     getEjercicios(): Observable<EjercicioDTO[]> {
-        // Backend expone listado en /api/ejercicios (sin sufijo /ejercicios)
-        return this.http.get<EjercicioDTO[]>(`${this.baseUrl}`);
+        return this.http.get<EjercicioDTO[]>(this.apiUrl);
     }
 
-    // CREAR EJERCICIO
-    crearEjercicio(dto: EjercicioCrearDTO): Observable<any> {
-        // Crear en /api/ejercicios
-        return this.http.post(`${this.baseUrl}`, dto);
+    crearEjercicio(ejercicio: EjercicioCrearDTO): Observable<EjercicioDTO> {
+        return this.http.post<EjercicioDTO>(this.apiUrl, ejercicio);
     }
 
-    // 🔹 LISTAR CATEGORÍAS
-    getCategorias(): Observable<CategoriaDTO[]> {
-        // Algunas APIs exponen categorías fuera de /ejercicios
-        return this.http.get<CategoriaDTO[]>(`${this.categoriasUrl}`);
+    actualizarEjercicio(id: string, ejercicio: EjercicioCrearDTO): Observable<EjercicioDTO> {
+        return this.http.put<EjercicioDTO>(`${this.apiUrl}/${id}`, ejercicio);
     }
 
-    // 🔹 LISTAR GRUPOS MUSCULARES
-    getGruposMusculares(): Observable<GrupoMuscularDTO[]> {
-        return this.http.get<GrupoMuscularDTO[]>(`${this.gruposUrl}`);
+    eliminarEjercicio(id: string): Observable<void> {
+        return this.http.delete<void>(`${this.apiUrl}/${id}`);
     }
 }
-

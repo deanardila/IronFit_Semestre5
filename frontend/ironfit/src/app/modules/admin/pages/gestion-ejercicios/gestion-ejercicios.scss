@@ -44,13 +44,15 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex: 1;
+    justify-content: flex-end;
 }
 
 /* Campo de búsqueda */
 .busqueda-container {
     flex: 0 1 auto;
     min-width: 250px;
-    max-width: 350px;
+    max-width: 400px;
 }
 
 .input-busqueda {
@@ -164,6 +166,10 @@
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 138, 31, 0.5);
     transform: translateY(-1px);
+}
+
+.mensaje-error {
+    color: #fda4af;
 }
 
 /* ---------- FORMULARIO CREAR EJERCICIO ---------- */
@@ -321,6 +327,26 @@
     background-color: rgba(255, 255, 255, 0.02);
 }
 
+.acciones-ejercicio {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.acciones-ejercicio .btn-actualizar,
+.acciones-ejercicio .btn-crear-ejercicio {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.76rem;
+    letter-spacing: 0.03em;
+    text-transform: none;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+}
+
+.acciones-ejercicio .btn-eliminar {
+    background: linear-gradient(135deg, #fb7185, #ef4444);
+    color: #111111;
+}
+
 /* Badge de categoría o dificultad */
 .categoria-badge,
 .dificultad-badge {
@@ -379,6 +405,18 @@ section p {
     .ejercicios-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .ejercicios-header-right {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .busqueda-container {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
     }
 
     .ejercicios-tabla {

@@ -4,11 +4,12 @@ import { RouterModule, Routes } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DashboardCliente } from './pages/dashboard-cliente/dashboard-cliente';
-import { MiPerfil } from './pages/mi-perfil/mi-perfil';
 import { MiPlan } from './pages/mi-plan/mi-plan';
 import { MisRutinas } from './pages/mis-rutinas/mis-rutinas';
 import { MisAsistencias } from './pages/mis-asistencias/mis-asistencias';
 import { MisEvaluaciones } from './pages/mis-evaluaciones/mis-evaluaciones';
+import { MiPerfil } from './pages/mi-perfil/mi-perfil';
+import { SharedModule } from '../../shared/shared-module';
 
 const routes: Routes = [
   { path: '', component: DashboardCliente },
@@ -23,7 +24,6 @@ const routes: Routes = [
 @NgModule({
   declarations: [
     DashboardCliente,
-    MiPerfil,
     MiPlan,
     MisRutinas,
     MisAsistencias,
@@ -33,6 +33,7 @@ const routes: Routes = [
     CommonModule,
     HttpClientModule,
     FormsModule,
+    SharedModule,
     RouterModule.forChild(routes),
   ]
 })

@@ -16,7 +16,7 @@ export interface PlanResumen {
 
 @Injectable({ providedIn: 'root' })
 export class Planes {
-    private baseUrl = 'http://localhost:8080/api/planes';
+    private baseUrl = 'http://localhost:8081/api/planes';
 
     constructor(private http: HttpClient) {}
 

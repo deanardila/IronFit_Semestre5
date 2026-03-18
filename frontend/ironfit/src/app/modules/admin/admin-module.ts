@@ -8,10 +8,13 @@ import { GestionEjercicios } from './pages/gestion-ejercicios/gestion-ejercicios
 import { PlanesRutinas } from './pages/planes-rutinas/planes-rutinas';
 import { AuditoriaReportes } from './pages/auditoria-reportes/auditoria-reportes';
 import { FormsModule } from '@angular/forms';
+import { MiPerfil } from '../cliente/pages/mi-perfil/mi-perfil';
+import { SharedModule } from '../../shared/shared-module';
 
 
 const routes: Routes = [
   { path: '', component: DashboardAdmin },
+  { path: 'perfil', component: MiPerfil },
   { path: 'usuarios', component: GestionUsuarios },
   { path: 'ejercicios', component: GestionEjercicios },
   { path: 'planes-rutinas', component: PlanesRutinas },
@@ -30,6 +33,7 @@ const routes: Routes = [
   imports: [
     CommonModule,
     FormsModule,
+    SharedModule,
     RouterModule.forChild(routes),
   ]
 })

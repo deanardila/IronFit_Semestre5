@@ -19,7 +19,7 @@ import { Observable } from 'rxjs';
     })
     export class AsistenciaService {
 
-    private baseUrl = 'http://localhost:8080/api/asistencias';
+    private baseUrl = 'http://localhost:8081/api/asistencias';
 
     constructor(private http: HttpClient) {}
 
@@ -29,5 +29,4 @@ import { Observable } from 'rxjs';
         );
     }
 
-  // luego aquí agregamos el detalle por plan/cliente
 }

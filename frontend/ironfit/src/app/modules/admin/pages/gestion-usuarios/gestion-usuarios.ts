@@ -2,6 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Usuarios, UsuarioResumen } from '../../usuarios';
+import { finalize, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-gestion-usuarios',
@@ -23,16 +24,16 @@ export class GestionUsuarios implements OnInit {
   cargando = false;
   vieneDeDashboard = false;
 
-  // 👉 Nuevo: control del formulario
+  // Control del formulario
   mostrarFormularioCrear = false;
 
-  // 👉 Nuevo: modelo del formulario de creación
+  // Modelo del formulario de creación
   nuevoUsuario: any = {
   tipoDoc: 'CC',      // valor por defecto
-  nroDoc: '',
+  numDoc: '',
   nombres: '',
   apellidos: '',
-  email: '',
+  correo: '',
   telefono: '',
   activo: true
 };
@@ -71,7 +72,13 @@ export class GestionUsuarios implements OnInit {
 
     console.log('Cargando usuarios...');
 
-    this.usuariosApi.getUsuariosResumen().subscribe({
+    this.usuariosApi.getUsuariosResumen().pipe(
+      timeout(10000),
+      finalize(() => {
+        this.cargando = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
       next: (lista) => {
         console.log('Usuarios resumen desde API:', lista);
         this.usuarios = lista ?? [];
@@ -81,8 +88,6 @@ export class GestionUsuarios implements OnInit {
         }
 
         this.aplicarFiltros();
-
-        this.cargando = false;
         console.log('Carga terminada, cargando =', this.cargando);
         this.cdr.detectChanges();
       },
@@ -90,7 +95,9 @@ export class GestionUsuarios implements OnInit {
         console.error('Error cargando usuarios', err);
         this.usuarios = [];
         this.usuariosFiltrados = [];
-        this.cargando = false;
+        if (err?.name === 'TimeoutError') {
+          console.warn('Timeout cargando usuarios.');
+        }
         this.cdr.detectChanges();
       }
     });
@@ -130,12 +137,12 @@ export class GestionUsuarios implements OnInit {
 
       // BÚSQUEDA por cédula o nombre
       if (busqueda) {
-        const nroDoc = (u as any).nroDoc ? String((u as any).nroDoc).toLowerCase() : '';
+        const numDoc = (u as any).numDoc ? String((u as any).numDoc).toLowerCase() : '';
         const nombres = (u.nombres || '').toLowerCase();
         const apellidos = (u.apellidos || '').toLowerCase();
         const nombreCompleto = `${nombres} ${apellidos}`.trim();
         
-        coincideBusqueda = nroDoc.includes(busqueda) || 
+        coincideBusqueda = numDoc.includes(busqueda) || 
                           nombres.includes(busqueda) || 
                           apellidos.includes(busqueda) ||
                           nombreCompleto.includes(busqueda);
@@ -161,15 +168,26 @@ export class GestionUsuarios implements OnInit {
     }
   }
 
-  // 👉 Nuevo: abrir / cerrar formulario
+  // Abrir / cerrar formulario
   abrirFormularioCrear(): void {
+  this.toggleFormularioCrear(true);
+}
+
+  toggleFormularioCrear(forzarApertura = false): void {
+  const debeAbrir = forzarApertura || !this.mostrarFormularioCrear;
+
+  if (!debeAbrir) {
+    this.cancelarCrear();
+    return;
+  }
+
   this.mostrarFormularioCrear = true;
   this.nuevoUsuario = {
     tipoDoc: 'CC',
-    nroDoc: '',
+    numDoc: '',
     nombres: '',
     apellidos: '',
-    email: '',
+    correo: '',
     telefono: '',
     activo: true,
     rol: 'CLIENTE'
@@ -183,23 +201,21 @@ export class GestionUsuarios implements OnInit {
     this.cdr.detectChanges();
   }
 
-  // 👉 Nuevo: guardar el usuario
-  guardarUsuario(): void {
+  actualizar(): void {
+    this.cargarUsuarios();
+  }
+
+  //Guardar el usuario
+guardarUsuario(): void {
   const payload = {
     tipoDoc: this.nuevoUsuario.tipoDoc,
-    nroDoc: this.nuevoUsuario.nroDoc,
+    numDoc: this.nuevoUsuario.numDoc,
     nombres: this.nuevoUsuario.nombres,
     apellidos: this.nuevoUsuario.apellidos,
-    email: this.nuevoUsuario.email,
+    correo: this.nuevoUsuario.correo,
     telefono: this.nuevoUsuario.telefono,
-    activo: this.nuevoUsuario.activo,
-
-    usuarioLogin: (this.nuevoUsuario.email && this.nuevoUsuario.email.trim() !== '')
-      ? this.nuevoUsuario.email.trim()
-      : this.nuevoUsuario.nroDoc,
-
-    clave: this.nuevoUsuario.nroDoc,
-    rolNombre: this.nuevoUsuario.rol    // "ENTRENADOR", "CLIENTE", etc
+    password: 'Ironfit123*', // Contraseña por defecto
+    roles: [this.nuevoUsuario.rol]
   };
 
   console.log('Guardando nuevo usuario (payload):', payload);
@@ -208,10 +224,44 @@ export class GestionUsuarios implements OnInit {
     next: (usuarioCreado) => {
       console.log('Usuario creado en backend:', usuarioCreado);
       this.mostrarFormularioCrear = false;
-      this.cargarUsuarios();  // recarga desde /resumen
+      this.cargarUsuarios(); // recarga desde /resumen
     },
     error: (err) => {
       console.error('Error creando usuario', err);
+    }
+  });
+
+}
+
+toggleEstado(usuario: UsuarioResumen): void {
+  const nuevoEstado = !usuario.activo;
+
+  this.usuariosApi.cambiarEstado(usuario.id, nuevoEstado).subscribe({
+    next: (usuarioActualizado) => {
+      console.log('Estado actualizado:', usuarioActualizado);
+
+      usuario.activo = usuarioActualizado.activo;
+      this.aplicarFiltros();
+      this.cdr.detectChanges();
+    },
+    error: (err) => {
+      console.error('Error cambiando estado del usuario', err);
+    }
+  });
+}
+
+resetearPassword(usuario: UsuarioResumen): void {
+  const confirmar = confirm(`¿Resetear la contraseña de ${usuario.nombres} ${usuario.apellidos} a la clave general?`);
+
+  if (!confirmar) return;
+
+  this.usuariosApi.resetearPassword(usuario.id).subscribe({
+    next: () => {
+      console.log('Contraseña reseteada correctamente');
+      alert('Contraseña restablecida a: Ironfit123*');
+    },
+    error: (err) => {
+      console.error('Error reseteando contraseña', err);
     }
   });
 }
