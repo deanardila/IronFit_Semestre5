@@ -104,14 +104,14 @@ export class PlanesRutinas implements OnInit {
   this.cargando = true;
 
   this.planesApi.getRutinasPorPlan(idPlan).subscribe({
-    next: (lista) => {
+    next: (lista: RutinaDTO[]) => {
       console.log('Rutinas recibidas (JSON):', lista);
       this.rutinas = Array.isArray(lista) ? lista : [];
       this.aplicarFiltrosRutinas();
       this.cargando = false;
       this.cdr.detectChanges();
     },
-    error: (err) => {
+    error: (err: any) => {
       console.error('Error cargando rutinas', err);
       this.rutinas = [];
       this.cargando = false;

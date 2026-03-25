@@ -20,7 +20,7 @@ public class EjercicioService {
     }
 
     public List<EjercicioResponse> listarEjercicios() {
-        return ejercicioRepository.findAll()
+        return ejercicioRepository.findByActivoTrue()
                 .stream()
                 .map(this::convertirAResponse)
                 .toList();
@@ -78,7 +78,8 @@ public class EjercicioService {
         Ejercicio ejercicio = ejercicioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Ejercicio no encontrado"));
 
-        ejercicioRepository.delete(ejercicio);
+        ejercicio.setActivo(false);
+        ejercicioRepository.save(ejercicio);
     }
 
     private EjercicioResponse convertirAResponse(Ejercicio ejercicio) {
@@ -93,4 +94,14 @@ public class EjercicioService {
         response.setTipoEquipo(ejercicio.getTipoEquipo());
         return response;
     }
+
+    public void cambiarEstado(String id, Boolean activo) {
+    Ejercicio ejercicio = ejercicioRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Ejercicio no encontrado"));
+
+    ejercicio.setActivo(activo);
+    ejercicio.setFechaActualizacion(LocalDateTime.now());
+
+    ejercicioRepository.save(ejercicio);
+}
 }

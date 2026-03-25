@@ -109,4 +109,16 @@ public class UserService {
 
         repositorioUsuario.save(usuario);
     }
+
+    public List<UserResponse> buscarClientes(String texto) {
+    return repositorioUsuario.findAll()
+            .stream()
+            .filter(usuario -> usuario.getRoles().contains("CLIENTE"))
+            .filter(usuario ->
+                    (usuario.getNombres() != null && usuario.getNombres().toLowerCase().contains(texto.toLowerCase())) ||
+                    (usuario.getNumDoc() != null && usuario.getNumDoc().contains(texto))
+            )
+            .map(this::convertirAResponse)
+            .toList();
+}
 }

@@ -20,19 +20,22 @@ public class EjercicioController {
         this.ejercicioService = ejercicioService;
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR','CLIENTE')")
+    // LISTAR
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
     @GetMapping
     public List<EjercicioResponse> listarEjercicios() {
         return ejercicioService.listarEjercicios();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    // CREAR
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
     @PostMapping
     public EjercicioResponse crearEjercicio(@Valid @RequestBody EjercicioCrearRequest request) {
         return ejercicioService.crearEjercicio(request);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    // ACTUALIZAR
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
     @PutMapping("/{id}")
     public EjercicioResponse actualizarEjercicio(
             @PathVariable String id,
@@ -41,9 +44,13 @@ public class EjercicioController {
         return ejercicioService.actualizarEjercicio(id, request);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
-    public void eliminarEjercicio(@PathVariable String id) {
-        ejercicioService.eliminarEjercicio(id);
+    // CAMBIAR ESTADO (ACTIVO/INACTIVO)
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
+    @PatchMapping("/{id}/estado")
+    public void cambiarEstado(
+            @PathVariable String id,
+            @RequestParam Boolean activo
+    ) {
+        ejercicioService.cambiarEstado(id, activo);
     }
 }

@@ -73,4 +73,11 @@ public class UserController {
     public ResponseEntity<List<UserResponse>> listarUsuarios() {
         return ResponseEntity.ok(servicioUsuario.listarUsuarios());
     }
+
+    @GetMapping("/clientes/buscar")
+    public ResponseEntity<List<UserResponse>> buscarClientes(
+            @RequestParam String texto
+    ) {
+        return ResponseEntity.ok(servicioUsuario.buscarClientes(texto));
+    }
 }

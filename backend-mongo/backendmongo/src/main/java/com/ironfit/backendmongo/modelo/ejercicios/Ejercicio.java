@@ -42,7 +42,7 @@ public class Ejercicio {
     @Size(max = 80, message = "El tipo de equipo no puede superar 80 caracteres")
     private String tipoEquipo;
 
-    private Boolean activo;
+    private Boolean activo = true;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
 

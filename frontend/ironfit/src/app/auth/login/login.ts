@@ -42,6 +42,13 @@ export class Login {
 
         const rolDetectado = Array.isArray(res.roles) ? res.roles[0] : res.rol;
 
+        const token = res.token || res.accessToken || res.jwt || null;
+        console.log('Token detectado:', token);
+        if (!token) {
+          this.mensajeError = 'No se recibió token de autenticación';
+          return;
+        }
+
         this.auth.setSession(res.token, rolDetectado);
 
         const nombreDetectado =

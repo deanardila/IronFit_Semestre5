@@ -32,17 +32,31 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+
+                //Permisos de acceso 
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
+
+                // usuarios
                 .requestMatchers("/api/usuarios/me").authenticated()
+                .requestMatchers("/api/usuarios/clientes/buscar").hasAnyRole("ADMIN", "ENTRENADOR")
                 .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
 
-                .requestMatchers(HttpMethod.GET, "/api/ejercicios/**").hasAnyRole("ADMIN", "ENTRENADOR", "CLIENTE")
-                .requestMatchers(HttpMethod.POST, "/api/ejercicios/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/ejercicios/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/ejercicios/**").hasRole("ADMIN")
+                // ejercicios
+                .requestMatchers(HttpMethod.GET, "/api/ejercicios/**").hasAnyRole("ADMIN", "ENTRENADOR")
+                .requestMatchers(HttpMethod.POST, "/api/ejercicios/**").hasAnyRole("ADMIN", "ENTRENADOR")
+                .requestMatchers(HttpMethod.PUT, "/api/ejercicios/**").hasAnyRole("ADMIN", "ENTRENADOR")
+                .requestMatchers(HttpMethod.PATCH, "/api/ejercicios/**").hasAnyRole("ADMIN", "ENTRENADOR")
+
+                // planes
+                .requestMatchers(HttpMethod.GET, "/api/planes/**").hasAnyRole("ADMIN", "ENTRENADOR")
+                .requestMatchers(HttpMethod.POST, "/api/planes/**").hasAnyRole("ADMIN", "ENTRENADOR")
+                .requestMatchers(HttpMethod.PUT, "/api/planes/**").hasAnyRole("ADMIN", "ENTRENADOR")
+                .requestMatchers(HttpMethod.PATCH, "/api/planes/**").hasAnyRole("ADMIN", "ENTRENADOR")
+
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
