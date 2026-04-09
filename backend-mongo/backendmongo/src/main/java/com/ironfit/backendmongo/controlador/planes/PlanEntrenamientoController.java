@@ -6,6 +6,7 @@ import com.ironfit.backendmongo.dto.planes.PlanEntrenamientoResponse;
 import com.ironfit.backendmongo.servicio.planes.PlanEntrenamientoService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,33 +23,33 @@ public class PlanEntrenamientoController {
 
     @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
     @GetMapping
-    public List<PlanEntrenamientoResponse> listarPlanes() {
-        return planEntrenamientoService.listarPlanes();
+    public List<PlanEntrenamientoResponse> listarPlanes(Authentication authentication) {
+        return planEntrenamientoService.listarPlanes(authentication);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
     @PostMapping
     public PlanEntrenamientoResponse crearPlan(
+            Authentication authentication,
             @Valid @RequestBody PlanEntrenamientoCrearRequest request
     ) {
-        return planEntrenamientoService.crearPlan(request);
+        return planEntrenamientoService.crearPlan(authentication, request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
     @PutMapping("/{id}")
     public PlanEntrenamientoResponse actualizarPlan(
+            Authentication authentication,
             @PathVariable String id,
             @Valid @RequestBody PlanEntrenamientoActualizarRequest request
     ) {
-        return planEntrenamientoService.actualizarPlan(id, request);
+        return planEntrenamientoService.actualizarPlan(authentication, id, request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
     @PatchMapping("/{id}/estado")
-    public void cambiarEstado(
+    public PlanEntrenamientoResponse cambiarEstado(
+            Authentication authentication,
             @PathVariable String id,
             @RequestParam Boolean activo
     ) {
-        planEntrenamientoService.cambiarEstado(id, activo);
+        return planEntrenamientoService.cambiarEstado(authentication, id, activo);
     }
 }

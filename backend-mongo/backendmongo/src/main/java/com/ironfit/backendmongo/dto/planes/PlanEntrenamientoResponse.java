@@ -13,6 +13,8 @@ public class PlanEntrenamientoResponse {
     private LocalDate fechaFin;
     private String clienteId;
     private String entrenadorId;
+    private String clienteNombre;
+    private String entrenadorNombre;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
@@ -82,6 +84,22 @@ public class PlanEntrenamientoResponse {
 
     public void setEntrenadorId(String entrenadorId) {
         this.entrenadorId = entrenadorId;
+    }
+
+    public String getClienteNombre() {
+        return clienteNombre;
+    }
+
+    public void setClienteNombre(String clienteNombre) {
+        this.clienteNombre = clienteNombre;
+    }
+
+    public String getEntrenadorNombre() {
+        return entrenadorNombre;
+    }
+
+    public void setEntrenadorNombre(String entrenadorNombre) {
+        this.entrenadorNombre = entrenadorNombre;
     }
 
     public Boolean getActivo() {

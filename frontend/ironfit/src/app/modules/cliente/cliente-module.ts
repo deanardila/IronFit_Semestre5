@@ -1,7 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Routes } from '@angular/router';
-import { HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DashboardCliente } from './pages/dashboard-cliente/dashboard-cliente';
 import { MiPlan } from './pages/mi-plan/mi-plan';
@@ -17,9 +16,8 @@ const routes: Routes = [
   { path: 'plan', component: MiPlan },
   { path: 'MisRutinas', component: MisRutinas },
   { path: 'asistencias', component: MisAsistencias },
-  { path: 'evaluaciones', component: MisEvaluaciones},
+  { path: 'evaluaciones', component: MisEvaluaciones },
 ];
-
 
 @NgModule({
   declarations: [
@@ -31,7 +29,6 @@ const routes: Routes = [
   ],
   imports: [
     CommonModule,
-    HttpClientModule,
     FormsModule,
     SharedModule,
     RouterModule.forChild(routes),

@@ -7,9 +7,13 @@ import java.util.List;
 
 public interface PlanEntrenamientoRepository extends MongoRepository<PlanEntrenamiento, String> {
 
-    List<PlanEntrenamiento> findByActivoTrue();
+    List<PlanEntrenamiento> findAllByOrderByFechaCreacionDesc();
 
-    List<PlanEntrenamiento> findByEntrenadorIdAndActivoTrue(String entrenadorId);
+    List<PlanEntrenamiento> findByEntrenadorIdOrderByFechaCreacionDesc(String entrenadorId);
 
-    List<PlanEntrenamiento> findByClienteIdAndActivoTrue(String clienteId);
+    boolean existsByNombreIgnoreCaseAndClienteIdAndEntrenadorIdAndActivoTrue(
+            String nombre,
+            String clienteId,
+            String entrenadorId
+    );
 }

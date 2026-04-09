@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface PlanEntrenamientoDTO {
+    clienteNombre?: string;
+    entrenadorNombre?: string;
     id: string;
     nombre: string;
     descripcion: string;

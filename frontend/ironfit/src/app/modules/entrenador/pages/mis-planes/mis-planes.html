@@ -21,7 +21,17 @@
 				{{ (mostrarFormularioCrear || modoEdicion) ? 'Ocultar formulario' : '+ Nuevo plan' }}
 			</button>
 
-			<button class="btn-actualizar" (click)="actualizar()">Actualizar</button>
+			<button class="btn-actualizar" (click)="actualizar()" [disabled]="guardando || cargando || !!cambiandoEstadoId">
+				Actualizar
+			</button>
+		</div>
+
+		<div class="filtro-estado-container">
+			<select [(ngModel)]="filtroEstado" (change)="aplicarFiltros()">
+				<option value="TODOS">Todos</option>
+				<option value="ACTIVOS">Activos</option>
+				<option value="INACTIVOS">Inactivos</option>
+			</select>
 		</div>
 	</header>
 
@@ -90,11 +100,11 @@
 
 
 			<div class="form-actions">
-				<button type="submit">
-					{{ modoEdicion ? 'Actualizar' : 'Crear' }}
+				<button type="submit" [disabled]="guardando">
+					{{ guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Crear') }}
 				</button>
 
-				<button type="button" (click)="cancelarFormulario()">
+				<button type="button" (click)="cancelarFormulario()" [disabled]="guardando">
 					Cancelar
 				</button>
 			</div>
@@ -135,20 +145,27 @@
 					<td>{{ p.objetivo }}</td>
 					<td>{{ p.fechaInicio }}</td>
 					<td>{{ p.fechaFin }}</td>
-					<td>{{ p.clienteId }}</td>
-					<td>{{ p.entrenadorId }}</td>
+					<td>{{ p.clienteNombre || p.clienteId }}</td>
+					<td>{{ p.entrenadorNombre || p.entrenadorId }}</td>
 					<td>
 						<button
 							type="button"
 							class="estado-badge"
 							[class.activo]="p.activo"
 							[class.inactivo]="!p.activo"
-							(click)="cambiarEstado(p)">
-							{{ p.activo ? 'ACTIVO' : 'INACTIVO' }}
+							(click)="cambiarEstado(p)"
+							[disabled]="cambiandoEstadoId === p.id">
+							{{ cambiandoEstadoId === p.id ? 'Procesando...' : (p.activo ? 'ACTIVO' : 'INACTIVO') }}
 						</button>
 					</td>
 					<td>
-						<button type="button" class="btn-editar-tabla" (click)="editarPlan(p)">Editar</button>
+						<button
+							type="button"
+							class="btn-editar-tabla"
+							(click)="editarPlan(p)"
+							[disabled]="guardando || cambiandoEstadoId === p.id">
+							Editar
+						</button>
 					</td>
 				</tr>
 			</tbody>
