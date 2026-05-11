@@ -27,7 +27,7 @@ export interface EjercicioCrearDTO {
     providedIn: 'root',
 })
 export class Ejercicios {
-    private apiUrl = 'http://localhost:8081/api/ejercicios';
+    private apiUrl = 'https://ironfit-backend-production.up.railway.app/api/ejercicios';
 
     constructor(private http: HttpClient) {}
 

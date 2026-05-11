@@ -19,7 +19,7 @@ import { Observable } from 'rxjs';
     })
     export class AsistenciaService {
 
-    private baseUrl = 'http://localhost:8081/api/asistencias';
+    private baseUrl = 'https://ironfit-backend-production.up.railway.app/api/asistencias';
 
     constructor(private http: HttpClient) {}
 

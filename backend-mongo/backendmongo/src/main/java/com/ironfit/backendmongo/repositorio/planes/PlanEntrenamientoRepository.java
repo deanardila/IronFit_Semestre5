@@ -11,6 +11,10 @@ public interface PlanEntrenamientoRepository extends MongoRepository<PlanEntrena
 
     List<PlanEntrenamiento> findByEntrenadorIdOrderByFechaCreacionDesc(String entrenadorId);
 
+    List<PlanEntrenamiento> findByClienteIdOrderByFechaCreacionDesc(String clienteId);
+
+    List<PlanEntrenamiento> findByClienteIdAndActivoTrue(String clienteId);
+
     boolean existsByNombreIgnoreCaseAndClienteIdAndEntrenadorIdAndActivoTrue(
             String nombre,
             String clienteId,

@@ -48,7 +48,7 @@ export interface RutinaResumen {
     providedIn: 'root',
 })
 export class Planes {
-    private apiUrl = 'http://localhost:8081/api/planes';
+    private apiUrl = 'https://ironfit-backend-production.up.railway.app/api/planes';
 
     constructor(private http: HttpClient) {}
 
@@ -72,7 +72,7 @@ export class Planes {
         return this.http.put<PlanEntrenamientoDTO>(`${this.apiUrl}/${id}`, plan);
     }
 
-    cambiarEstado(id: string, activo: boolean): Observable<void> {
-        return this.http.patch<void>(`${this.apiUrl}/${id}/estado?activo=${activo}`, {});
+    cambiarEstado(id: string, activo: boolean): Observable<PlanEntrenamientoDTO> {
+        return this.http.patch<PlanEntrenamientoDTO>(`${this.apiUrl}/${id}/estado?activo=${activo}`, {});
     }
 }

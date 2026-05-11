@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 })
 export class Auth {
   
-  private apiUrl = 'http://localhost:8081/api/auth/login';
+  private apiUrl = 'https://ironfit-backend-production.up.railway.app/api/auth/login';
 
   constructor(private http: HttpClient) {}
 

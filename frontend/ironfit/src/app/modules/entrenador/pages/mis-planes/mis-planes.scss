@@ -211,6 +211,7 @@
     padding: 0.55rem 0.8rem;
     color: var(--ironfit-text);
     font-size: 0.9rem;
+    font-family: inherit;
     outline: none;
     transition: border-color 0.16s ease, box-shadow 0.16s ease,
         background-color 0.16s ease;
@@ -219,6 +220,10 @@
 .form-row textarea {
     resize: vertical;
     min-height: 80px;
+}
+
+.form-row input[type='date'] {
+    color-scheme: dark;
 }
 
 .form-row input:focus,

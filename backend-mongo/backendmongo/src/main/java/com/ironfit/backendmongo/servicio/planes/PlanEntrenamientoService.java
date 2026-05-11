@@ -35,9 +35,19 @@ public class PlanEntrenamientoService {
         List<PlanEntrenamiento> planes;
 
         if (tieneRol(usuarioActual, RoleName.ADMIN)) {
+
             planes = planEntrenamientoRepository.findAllByOrderByFechaCreacionDesc();
+
         } else if (tieneRol(usuarioActual, RoleName.ENTRENADOR)) {
-            planes = planEntrenamientoRepository.findByEntrenadorIdOrderByFechaCreacionDesc(usuarioActual.getId());
+
+            planes = planEntrenamientoRepository
+                    .findByEntrenadorIdOrderByFechaCreacionDesc(usuarioActual.getId());
+
+        } else if (tieneRol(usuarioActual, RoleName.CLIENTE)) {
+
+            planes = planEntrenamientoRepository
+                    .findByClienteIdOrderByFechaCreacionDesc(usuarioActual.getId());
+
         } else {
             throw new RuntimeException("No tienes permisos para listar planes");
         }
@@ -63,7 +73,7 @@ public class PlanEntrenamientoService {
 
         validarCliente(clienteIdLimpio);
         validarEntrenador(entrenadorIdFinal);
-        validarDuplicado(nombreLimpio, clienteIdLimpio, entrenadorIdFinal);
+        validarClienteSinPlanActivo(clienteIdLimpio, null);
 
         LocalDateTime ahora = LocalDateTime.now();
 
@@ -106,14 +116,10 @@ public class PlanEntrenamientoService {
         validarCliente(clienteIdLimpio);
         validarEntrenador(entrenadorIdFinal);
 
-        boolean cambioClave =
-                !nombreLimpio.equalsIgnoreCase(plan.getNombre()) ||
-                !clienteIdLimpio.equals(plan.getClienteId()) ||
-                !entrenadorIdFinal.equals(plan.getEntrenadorId()) ||
-                !Boolean.TRUE.equals(plan.getActivo());
+        boolean cambioCliente = !clienteIdLimpio.equals(plan.getClienteId());
 
-        if (cambioClave) {
-            validarDuplicado(nombreLimpio, clienteIdLimpio, entrenadorIdFinal);
+        if (cambioCliente && Boolean.TRUE.equals(plan.getActivo())) {
+            validarClienteSinPlanActivo(clienteIdLimpio, plan.getId());
         }
 
         plan.setNombre(nombreLimpio);
@@ -130,34 +136,39 @@ public class PlanEntrenamientoService {
     }
 
     public PlanEntrenamientoResponse cambiarEstado(
-            Authentication authentication,
-            String id,
-            Boolean activo
-    ) {
-        UserDocument usuarioActual = obtenerUsuarioAutenticado(authentication);
+        Authentication authentication,
+        String id,
+        Boolean activo
+        ) {
+            UserDocument usuarioActual = obtenerUsuarioAutenticado(authentication);
 
-        PlanEntrenamiento plan = planEntrenamientoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Plan de entrenamiento no encontrado"));
+            PlanEntrenamiento plan = planEntrenamientoRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Plan de entrenamiento no encontrado"));
 
-        validarAccesoAlPlan(usuarioActual, plan);
+            validarAccesoAlPlan(usuarioActual, plan);
 
-        plan.setActivo(activo);
-        plan.setFechaActualizacion(LocalDateTime.now());
+            if (Boolean.TRUE.equals(activo)) {
+                validarClienteSinPlanActivo(plan.getClienteId(), plan.getId());
+            }
 
-        PlanEntrenamiento actualizado = planEntrenamientoRepository.save(plan);
+            plan.setActivo(activo);
+            plan.setFechaActualizacion(LocalDateTime.now());
+
+            PlanEntrenamiento actualizado = planEntrenamientoRepository.save(plan);
+
         return convertirAResponse(actualizado);
     }
 
-    private void validarDuplicado(String nombre, String clienteId, String entrenadorId) {
-        boolean yaExiste = planEntrenamientoRepository
-                .existsByNombreIgnoreCaseAndClienteIdAndEntrenadorIdAndActivoTrue(
-                        nombre,
-                        clienteId,
-                        entrenadorId
-                );
 
-        if (yaExiste) {
-            throw new RuntimeException("Ya existe un plan activo con ese nombre para este cliente");
+    private void validarClienteSinPlanActivo(String clienteId, String planIdActual) {
+        List<PlanEntrenamiento> planesActivos =
+                planEntrenamientoRepository.findByClienteIdAndActivoTrue(clienteId);
+
+        boolean tieneOtroPlanActivo = planesActivos.stream()
+                .anyMatch(plan -> planIdActual == null || !plan.getId().equals(planIdActual));
+
+        if (tieneOtroPlanActivo) {
+            throw new RuntimeException("Este cliente ya tiene un plan activo asignado");
         }
     }
 

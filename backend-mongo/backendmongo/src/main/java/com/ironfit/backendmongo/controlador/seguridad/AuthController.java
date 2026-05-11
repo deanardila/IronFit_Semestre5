@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:4200")
 public class AuthController {
 
     private final AuthService servicioAuth;
@@ -19,8 +18,17 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest solicitud) {
+
+        System.out.println("========== ENTRÓ AL LOGIN ==========");
         return ResponseEntity.ok(servicioAuth.login(solicitud));
     }
+
+    @GetMapping("/ping")
+        public ResponseEntity<String> ping() {
+            return ResponseEntity.ok("CORS OK - backend vivo");
+        }
+
+    
 
     
 }

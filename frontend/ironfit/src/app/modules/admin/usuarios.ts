@@ -20,7 +20,7 @@ export interface UsuarioResumen {
 })
 export class Usuarios {
 
-    private baseUrl = 'http://localhost:8081/api/usuarios';
+    private baseUrl = 'https://ironfit-backend-production.up.railway.app/api/usuarios';
 
     constructor(private http: HttpClient) {}
 

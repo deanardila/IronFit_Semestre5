@@ -21,12 +21,15 @@ public class PlanEntrenamientoController {
         this.planEntrenamientoService = planEntrenamientoService;
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
+    // LISTAR - ADMIN, ENTRENADOR y CLIENTE
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR','CLIENTE')")
     @GetMapping
     public List<PlanEntrenamientoResponse> listarPlanes(Authentication authentication) {
         return planEntrenamientoService.listarPlanes(authentication);
     }
 
+    // CREAR - solo ENTRENADOR
+    @PreAuthorize("hasRole('ENTRENADOR')")
     @PostMapping
     public PlanEntrenamientoResponse crearPlan(
             Authentication authentication,
@@ -35,6 +38,8 @@ public class PlanEntrenamientoController {
         return planEntrenamientoService.crearPlan(authentication, request);
     }
 
+    // ACTUALIZAR - solo ENTRENADOR
+    @PreAuthorize("hasRole('ENTRENADOR')")
     @PutMapping("/{id}")
     public PlanEntrenamientoResponse actualizarPlan(
             Authentication authentication,
@@ -44,6 +49,8 @@ public class PlanEntrenamientoController {
         return planEntrenamientoService.actualizarPlan(authentication, id, request);
     }
 
+    // CAMBIAR ESTADO - solo ENTRENADOR
+    @PreAuthorize("hasRole('ENTRENADOR')")
     @PatchMapping("/{id}/estado")
     public PlanEntrenamientoResponse cambiarEstado(
             Authentication authentication,

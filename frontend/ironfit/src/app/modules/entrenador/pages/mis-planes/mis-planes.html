@@ -57,12 +57,24 @@
 
 			<div class="form-row">
 				<label>Fecha inicio</label>
-				<input type="date" name="fechaInicio" [(ngModel)]="formulario.fechaInicio" required />
+				<input
+						type="date"
+						name="fechaInicio"
+						[(ngModel)]="formulario.fechaInicio"
+						[min]="minFechaPlan"
+						required
+					/>
 			</div>
 
 			<div class="form-row">
 				<label>Fecha fin</label>
-				<input type="date" name="fechaFin" [(ngModel)]="formulario.fechaFin" required />
+				<input
+						type="date"
+						name="fechaFin"
+						[(ngModel)]="formulario.fechaFin"
+						[min]="formulario.fechaInicio || minFechaPlan"
+						required
+					/>
 			</div>
 
 			<!-- NUEVO: buscador de cliente -->

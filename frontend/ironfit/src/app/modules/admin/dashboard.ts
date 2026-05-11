@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 })
 export class Dashboard {
 
-    private baseUrl = 'http://localhost:8081/api/dashboard';
+    private baseUrl = 'https://ironfit-backend-production.up.railway.app/api/dashboard';
 
     constructor(private http: HttpClient) {}
 
