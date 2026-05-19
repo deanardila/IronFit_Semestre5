@@ -75,4 +75,8 @@ export class Planes {
     cambiarEstado(id: string, activo: boolean): Observable<PlanEntrenamientoDTO> {
         return this.http.patch<PlanEntrenamientoDTO>(`${this.apiUrl}/${id}/estado?activo=${activo}`, {});
     }
+
+    obtenerPlan(id: string): Observable<PlanEntrenamientoDTO> {
+        return this.http.get<PlanEntrenamientoDTO>(`${this.apiUrl}/${id}`);
+    }
 }

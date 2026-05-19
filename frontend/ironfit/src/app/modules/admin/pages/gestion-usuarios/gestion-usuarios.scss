@@ -423,6 +423,125 @@
     box-shadow: var(--ironfit-shadow-soft);
     }
 
+    /* ---------- ASIGNACIÓN CLIENTE - ENTRENADOR ---------- */
+
+    .asignar-entrenador-form {
+        margin-top: 1rem;
+        padding: 1.25rem;
+        border-radius: var(--ironfit-radius-lg);
+        background: linear-gradient(145deg, #111111, #050505);
+        border: 1px solid var(--ironfit-border);
+        box-shadow: var(--ironfit-shadow-soft);
+    }
+
+    .asignar-entrenador-form h2 {
+        margin: 0 0 1rem;
+        font-size: 1rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .cliente-asignacion-resumen {
+        margin-bottom: 1rem;
+        padding: 0.9rem 1rem;
+        border-radius: 12px;
+        background: rgba(255, 138, 31, 0.08);
+        border: 1px solid rgba(255, 138, 31, 0.24);
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .cliente-asignacion-resumen span {
+        color: var(--ironfit-text-muted);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+    }
+
+    .cliente-asignacion-resumen strong {
+        color: var(--ironfit-text);
+        font-size: 0.95rem;
+    }
+
+    .cliente-asignacion-resumen small {
+        color: var(--ironfit-text-muted);
+        font-weight: 700;
+    }
+
+    .asignacion-label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 110px;
+        padding: 0.35rem 0.7rem;
+        border-radius: 999px;
+        background-color: rgba(0, 170, 85, 0.15);
+        color: #32d27a;
+        border: 1px solid rgba(50, 210, 122, 0.35);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+    }
+
+    .asignacion-label.sin-asignar {
+        background-color: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .acciones-usuario {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-asignar-entrenador {
+        border-radius: 999px;
+        padding: 0.45rem 0.85rem;
+        background: rgba(255, 138, 31, 0.12);
+        color: #ffb347;
+        border: 1px solid rgba(255, 138, 31, 0.35);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+
+    .btn-asignar-entrenador:hover {
+        background: rgba(255, 138, 31, 0.22);
+        border-color: rgba(255, 138, 31, 0.65);
+        transform: translateY(-1px);
+    }
+
+    .asignar-entrenador-form select {
+        padding: 0.7rem 0.85rem;
+        border-radius: 8px;
+        background: #171717;
+        border: 1px solid rgba(255, 138, 31, 0.28);
+        color: var(--ironfit-text);
+        outline: none;
+    }
+
+    .asignar-entrenador-form select:focus {
+        border-color: #ff8a1f;
+    }
+
+
+    .usuarios-tabla th:nth-last-child(2),
+    .usuarios-tabla td:nth-last-child(2) {
+        min-width: 170px;
+    }
+
+    .acciones-usuario {
+        justify-content: flex-start;
+    }
+
     /* ---------- RESPONSIVE GENERAL ---------- */
 
     @media (max-width: 768px) {

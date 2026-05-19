@@ -8,6 +8,7 @@ import com.ironfit.backendmongo.modelo.seguridad.RoleName;
 import com.ironfit.backendmongo.modelo.seguridad.UserDocument;
 import com.ironfit.backendmongo.repositorio.planes.PlanEntrenamientoRepository;
 import com.ironfit.backendmongo.repositorio.seguridad.UserRepository;
+import com.ironfit.backendmongo.servicio.asignaciones.AsignacionEntrenadorClienteService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -20,13 +21,16 @@ public class PlanEntrenamientoService {
 
     private final PlanEntrenamientoRepository planEntrenamientoRepository;
     private final UserRepository userRepository;
+    private final AsignacionEntrenadorClienteService asignacionService;
 
     public PlanEntrenamientoService(
             PlanEntrenamientoRepository planEntrenamientoRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            AsignacionEntrenadorClienteService asignacionService
     ) {
         this.planEntrenamientoRepository = planEntrenamientoRepository;
         this.userRepository = userRepository;
+        this.asignacionService = asignacionService;
     }
 
     public List<PlanEntrenamientoResponse> listarPlanes(Authentication authentication) {
@@ -73,6 +77,7 @@ public class PlanEntrenamientoService {
 
         validarCliente(clienteIdLimpio);
         validarEntrenador(entrenadorIdFinal);
+        validarClienteAsignadoSiEntrenador(usuarioActual, clienteIdLimpio);
         validarClienteSinPlanActivo(clienteIdLimpio, null);
 
         LocalDateTime ahora = LocalDateTime.now();
@@ -115,6 +120,7 @@ public class PlanEntrenamientoService {
 
         validarCliente(clienteIdLimpio);
         validarEntrenador(entrenadorIdFinal);
+        validarClienteAsignadoSiEntrenador(usuarioActual, clienteIdLimpio);
 
         boolean cambioCliente = !clienteIdLimpio.equals(plan.getClienteId());
 
@@ -139,24 +145,28 @@ public class PlanEntrenamientoService {
         Authentication authentication,
         String id,
         Boolean activo
-        ) {
-            UserDocument usuarioActual = obtenerUsuarioAutenticado(authentication);
+    ) {
+    if (activo == null) {
+        throw new RuntimeException("El estado del plan es obligatorio");
+    }
 
-            PlanEntrenamiento plan = planEntrenamientoRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Plan de entrenamiento no encontrado"));
+    UserDocument usuarioActual = obtenerUsuarioAutenticado(authentication);
 
-            validarAccesoAlPlan(usuarioActual, plan);
+    PlanEntrenamiento plan = planEntrenamientoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Plan de entrenamiento no encontrado"));
 
-            if (Boolean.TRUE.equals(activo)) {
-                validarClienteSinPlanActivo(plan.getClienteId(), plan.getId());
-            }
+    validarAccesoAlPlan(usuarioActual, plan);
 
-            plan.setActivo(activo);
-            plan.setFechaActualizacion(LocalDateTime.now());
+    if (Boolean.TRUE.equals(activo)) {
+        validarClienteSinPlanActivo(plan.getClienteId(), plan.getId());
+    }
 
-            PlanEntrenamiento actualizado = planEntrenamientoRepository.save(plan);
+    plan.setActivo(activo);
+    plan.setFechaActualizacion(LocalDateTime.now());
 
-        return convertirAResponse(actualizado);
+    PlanEntrenamiento actualizado = planEntrenamientoRepository.save(plan);
+
+    return convertirAResponse(actualizado);
     }
 
 
@@ -251,6 +261,21 @@ public class PlanEntrenamientoService {
         }
     }
 
+    private void validarClienteAsignadoSiEntrenador(UserDocument usuarioActual, String clienteId) {
+        if (!tieneRol(usuarioActual, RoleName.ENTRENADOR)) {
+            return;
+        }
+
+        boolean asignado = asignacionService.clienteAsignadoAEntrenador(
+                clienteId,
+                usuarioActual.getId()
+        );
+
+        if (!asignado) {
+            throw new RuntimeException("No puedes crear planes para un cliente que no está asignado a ti");
+        }
+    }
+
     private PlanEntrenamientoResponse convertirAResponse(PlanEntrenamiento plan) {
         PlanEntrenamientoResponse response = new PlanEntrenamientoResponse();
         response.setId(plan.getId());
@@ -279,4 +304,34 @@ public class PlanEntrenamientoService {
         String apellidos = usuario.getApellidos() != null ? usuario.getApellidos().trim() : "";
         return (nombres + " " + apellidos).trim();
     }
+
+    public PlanEntrenamientoResponse obtenerPlan(Authentication authentication, String id) {
+    UserDocument usuarioActual = obtenerUsuarioAutenticado(authentication);
+
+    PlanEntrenamiento plan = planEntrenamientoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Plan de entrenamiento no encontrado"));
+
+    validarAccesoLecturaPlan(usuarioActual, plan);
+
+    return convertirAResponse(plan);
+    }  
+    
+    private void validarAccesoLecturaPlan(UserDocument usuarioActual, PlanEntrenamiento plan) {
+    if (tieneRol(usuarioActual, RoleName.ADMIN)) {
+        return;
+    }
+
+    if (tieneRol(usuarioActual, RoleName.ENTRENADOR)
+            && usuarioActual.getId().equals(plan.getEntrenadorId())) {
+        return;
+    }
+
+    if (tieneRol(usuarioActual, RoleName.CLIENTE)
+            && usuarioActual.getId().equals(plan.getClienteId())) {
+        return;
+    }
+
+    throw new RuntimeException("No tienes permisos para ver este plan");
+}
+
 }

@@ -59,4 +59,14 @@ public class PlanEntrenamientoController {
     ) {
         return planEntrenamientoService.cambiarEstado(authentication, id, activo);
     }
+
+    // VER DETALLE - ADMIN, ENTRENADOR o CLIENTE
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR','CLIENTE')")
+    @GetMapping("/{id}")
+    public PlanEntrenamientoResponse obtenerPlan(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
+        return planEntrenamientoService.obtenerPlan(authentication, id);
+    }
 }

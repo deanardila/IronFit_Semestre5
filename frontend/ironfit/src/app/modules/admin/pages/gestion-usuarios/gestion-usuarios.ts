@@ -1,8 +1,12 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Usuarios, UsuarioResumen } from '../../usuarios';
 import { finalize, timeout } from 'rxjs';
+
+import {
+  AsignacionEntrenadorClienteDTO,
+  AsignacionesService
+} from '../../asignaciones';
 
 @Component({
   selector: 'app-gestion-usuarios',
@@ -15,174 +19,26 @@ export class GestionUsuarios implements OnInit {
   usuarios: UsuarioResumen[] = [];
   usuariosFiltrados: UsuarioResumen[] = [];
 
-  filtroTipo: string | null = null;    // 'cliente' | 'entrenador' | null
-  filtroEstado: string | null = null;  // 'ACTIVO' | 'INACTIVO' | null
-  
-  // Búsqueda por cédula o nombre
-  terminoBusqueda: string = '';
+  asignaciones: AsignacionEntrenadorClienteDTO[] = [];
+  entrenadoresActivos: UsuarioResumen[] = [];
+
+  filtroTipo: string | null = null;
+  filtroEstado: string | null = null;
+
+  terminoBusqueda = '';
 
   cargando = false;
   vieneDeDashboard = false;
 
-  // Control del formulario
   mostrarFormularioCrear = false;
 
-  // Modelo del formulario de creación
+  // Asignar / cambiar entrenador
+  mostrarFormularioAsignacion = false;
+  clienteSeleccionadoAsignacion: UsuarioResumen | null = null;
+  entrenadorSeleccionadoId = '';
+  guardandoAsignacion = false;
+
   nuevoUsuario: any = {
-  tipoDoc: 'CC',      // valor por defecto
-  numDoc: '',
-  nombres: '',
-  apellidos: '',
-  correo: '',
-  telefono: '',
-  activo: true
-};
-
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private usuariosApi: Usuarios,
-    private cdr: ChangeDetectorRef
-  ) {}
-
-  ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
-      console.log('Query params recibidos:', params);
-
-      if (params['tipo'] || params['estado']) {
-        // Viene de las tarjetas del dashboard
-        this.vieneDeDashboard = true;
-        this.filtroTipo = params['tipo'] ?? null;
-        this.filtroEstado = params['estado'] ?? null;
-      } else {
-        // Viene del menú hamburguesa
-        this.vieneDeDashboard = false;
-        this.filtroTipo = null;
-        this.filtroEstado = null;
-      }
-
-      console.log('Filtros iniciales -> tipo:', this.filtroTipo, 'estado:', this.filtroEstado);
-      this.cargarUsuarios();
-    });
-  }
-
-  cargarUsuarios(): void {
-    this.cargando = true;
-    this.cdr.detectChanges();
-
-    console.log('Cargando usuarios...');
-
-    this.usuariosApi.getUsuariosResumen().pipe(
-      timeout(10000),
-      finalize(() => {
-        this.cargando = false;
-        this.cdr.detectChanges();
-      })
-    ).subscribe({
-      next: (lista) => {
-        console.log('Usuarios resumen desde API:', lista);
-        this.usuarios = lista ?? [];
-
-        if (this.usuarios.length > 0) {
-          console.log('Ejemplo usuario[0]:', this.usuarios[0]);
-        }
-
-        this.aplicarFiltros();
-        console.log('Carga terminada, cargando =', this.cargando);
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Error cargando usuarios', err);
-        this.usuarios = [];
-        this.usuariosFiltrados = [];
-        if (err?.name === 'TimeoutError') {
-          console.warn('Timeout cargando usuarios.');
-        }
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  aplicarFiltros(): void {
-    console.log('Aplicando filtros -> tipo:', this.filtroTipo, 'estado:', this.filtroEstado, 'búsqueda:', this.terminoBusqueda);
-
-    const tipoActual = this.filtroTipo;
-    const estadoActual = this.filtroEstado;
-    const busqueda = this.terminoBusqueda.toLowerCase().trim();
-
-    this.usuariosFiltrados = this.usuarios.filter(u => {
-      let coincideTipo = true;
-      let coincideEstado = true;
-      let coincideBusqueda = true;
-
-      // TIPO
-      if (tipoActual) {
-        const tipoBuscado = tipoActual.toUpperCase();
-
-        if (Array.isArray(u.roles) && u.roles.length > 0) {
-          coincideTipo = u.roles
-            .map(r => ('' + r).toUpperCase())
-            .some(r => r.includes(tipoBuscado));
-        } else {
-          coincideTipo = false;
-        }
-      }
-
-      // ESTADO
-      if (estadoActual) {
-        const activoBuscado = estadoActual === 'ACTIVO';
-        const activo = !!u.activo;
-        coincideEstado = activo === activoBuscado;
-      }
-
-      // BÚSQUEDA por cédula o nombre
-      if (busqueda) {
-        const numDoc = (u as any).numDoc ? String((u as any).numDoc).toLowerCase() : '';
-        const nombres = (u.nombres || '').toLowerCase();
-        const apellidos = (u.apellidos || '').toLowerCase();
-        const nombreCompleto = `${nombres} ${apellidos}`.trim();
-        
-        coincideBusqueda = numDoc.includes(busqueda) || 
-                          nombres.includes(busqueda) || 
-                          apellidos.includes(busqueda) ||
-                          nombreCompleto.includes(busqueda);
-      }
-
-      return coincideTipo && coincideEstado && coincideBusqueda;
-    });
-
-    console.log('Usuarios filtrados:', this.usuariosFiltrados);
-
-    if (estadoActual && this.vieneDeDashboard && this.usuariosFiltrados.length === 0) {
-      console.warn('Sin resultados con estado. Mostrando solo por tipo.');
-      this.filtroEstado = null;
-
-      this.usuariosFiltrados = this.usuarios.filter(u => {
-        if (!tipoActual) return true;
-        const tipoBuscado = tipoActual.toUpperCase();
-        return Array.isArray(u.roles) &&
-                u.roles.map(r => ('' + r).toUpperCase()).some(r => r.includes(tipoBuscado));
-      });
-
-      console.log('Usuarios filtrados (solo tipo):', this.usuariosFiltrados);
-    }
-  }
-
-  // Abrir / cerrar formulario
-  abrirFormularioCrear(): void {
-  this.toggleFormularioCrear(true);
-}
-
-  toggleFormularioCrear(forzarApertura = false): void {
-  const debeAbrir = forzarApertura || !this.mostrarFormularioCrear;
-
-  if (!debeAbrir) {
-    this.cancelarCrear();
-    return;
-  }
-
-  this.mostrarFormularioCrear = true;
-  this.nuevoUsuario = {
     tipoDoc: 'CC',
     numDoc: '',
     nombres: '',
@@ -192,82 +48,358 @@ export class GestionUsuarios implements OnInit {
     activo: true,
     rol: 'CLIENTE'
   };
-  this.cdr.detectChanges();
-}
 
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private usuariosApi: Usuarios,
+    private asignacionesApi: AsignacionesService,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      if (params['tipo'] || params['estado']) {
+        this.vieneDeDashboard = true;
+        this.filtroTipo = params['tipo'] ?? null;
+        this.filtroEstado = params['estado'] ?? null;
+      } else {
+        this.vieneDeDashboard = false;
+        this.filtroTipo = null;
+        this.filtroEstado = null;
+      }
+
+      this.cargarUsuarios();
+    });
+  }
+
+  cargarUsuarios(): void {
+    this.cargando = true;
+    this.cdr.detectChanges();
+
+    this.usuariosApi.getUsuariosResumen().pipe(
+      timeout(10000),
+      finalize(() => {
+        this.cargando = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (lista) => {
+        this.usuarios = lista ?? [];
+        this.entrenadoresActivos = this.usuarios.filter(
+          u => this.esEntrenador(u) && u.activo
+        );
+
+        this.cargarAsignaciones();
+      },
+      error: (err) => {
+        console.error('Error cargando usuarios', err);
+        this.usuarios = [];
+        this.usuariosFiltrados = [];
+        this.asignaciones = [];
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  cargarAsignaciones(): void {
+    this.asignacionesApi.listarAsignaciones().pipe(
+      timeout(10000)
+    ).subscribe({
+      next: (asignaciones) => {
+        this.asignaciones = asignaciones || [];
+        this.aplicarFiltros();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error cargando asignaciones', err);
+        this.asignaciones = [];
+        this.aplicarFiltros();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  aplicarFiltros(): void {
+    const tipoActual = this.filtroTipo;
+    const estadoActual = this.filtroEstado;
+    const busqueda = this.normalizarTexto(this.terminoBusqueda);
+
+    this.usuariosFiltrados = this.usuarios.filter(u => {
+      let coincideTipo = true;
+      let coincideEstado = true;
+      let coincideBusqueda = true;
+
+      if (tipoActual) {
+        const tipoBuscado = tipoActual.toUpperCase();
+
+        if (Array.isArray(u.roles) && u.roles.length > 0) {
+          coincideTipo = u.roles
+            .map(r => String(r).toUpperCase())
+            .some(r => r.includes(tipoBuscado));
+        } else {
+          coincideTipo = false;
+        }
+      }
+
+      if (estadoActual) {
+        const activoBuscado = estadoActual === 'ACTIVO';
+        coincideEstado = !!u.activo === activoBuscado;
+      }
+
+      if (busqueda) {
+        const numDoc = this.normalizarTexto((u as any).numDoc);
+        const nombres = this.normalizarTexto(u.nombres);
+        const apellidos = this.normalizarTexto(u.apellidos);
+        const correo = this.normalizarTexto(u.correo);
+        const nombreCompleto = this.normalizarTexto(`${u.nombres || ''} ${u.apellidos || ''}`);
+
+        coincideBusqueda =
+          numDoc.includes(busqueda) ||
+          nombres.includes(busqueda) ||
+          apellidos.includes(busqueda) ||
+          correo.includes(busqueda) ||
+          nombreCompleto.includes(busqueda);
+      }
+
+      return coincideTipo && coincideEstado && coincideBusqueda;
+    });
+
+    if (estadoActual && this.vieneDeDashboard && this.usuariosFiltrados.length === 0) {
+      this.filtroEstado = null;
+
+      this.usuariosFiltrados = this.usuarios.filter(u => {
+        if (!tipoActual) return true;
+
+        const tipoBuscado = tipoActual.toUpperCase();
+
+        return Array.isArray(u.roles) &&
+          u.roles.map(r => String(r).toUpperCase()).some(r => r.includes(tipoBuscado));
+      });
+    }
+  }
+
+  abrirFormularioCrear(): void {
+    this.toggleFormularioCrear(true);
+  }
+
+  toggleFormularioCrear(forzarApertura = false): void {
+    const debeAbrir = forzarApertura || !this.mostrarFormularioCrear;
+
+    if (!debeAbrir) {
+      this.cancelarCrear();
+      return;
+    }
+
+    this.mostrarFormularioCrear = true;
+    this.mostrarFormularioAsignacion = false;
+
+    this.nuevoUsuario = {
+      tipoDoc: 'CC',
+      numDoc: '',
+      nombres: '',
+      apellidos: '',
+      correo: '',
+      telefono: '',
+      activo: true,
+      rol: 'CLIENTE'
+    };
+
+    this.cdr.detectChanges();
+  }
 
   cancelarCrear(): void {
     this.mostrarFormularioCrear = false;
     this.cdr.detectChanges();
   }
 
+  guardarUsuario(): void {
+    const payload = {
+      tipoDoc: this.nuevoUsuario.tipoDoc,
+      numDoc: this.nuevoUsuario.numDoc,
+      nombres: this.nuevoUsuario.nombres,
+      apellidos: this.nuevoUsuario.apellidos,
+      correo: this.nuevoUsuario.correo,
+      telefono: this.nuevoUsuario.telefono,
+      password: 'Ironfit123*',
+      roles: [this.nuevoUsuario.rol]
+    };
+
+    this.usuariosApi.crearUsuario(payload).subscribe({
+      next: () => {
+        this.mostrarFormularioCrear = false;
+        this.cargarUsuarios();
+      },
+      error: (err) => {
+        console.error('Error creando usuario', err);
+      }
+    });
+  }
+
+  toggleEstado(usuario: UsuarioResumen): void {
+    const nuevoEstado = !usuario.activo;
+
+    this.usuariosApi.cambiarEstado(usuario.id, nuevoEstado).subscribe({
+      next: (usuarioActualizado) => {
+        usuario.activo = usuarioActualizado.activo;
+        this.aplicarFiltros();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error cambiando estado del usuario', err);
+      }
+    });
+  }
+
+  resetearPassword(usuario: UsuarioResumen): void {
+    const confirmar = confirm(
+      `¿Resetear la contraseña de ${usuario.nombres} ${usuario.apellidos} a la clave general?`
+    );
+
+    if (!confirmar) return;
+
+    this.usuariosApi.resetearPassword(usuario.id).subscribe({
+      next: () => {
+        alert('Contraseña restablecida a: Ironfit123*');
+      },
+      error: (err) => {
+        console.error('Error reseteando contraseña', err);
+      }
+    });
+  }
+
+  // ================== ASIGNACIONES ==================
+
+  abrirFormularioAsignacion(cliente: UsuarioResumen): void {
+    this.clienteSeleccionadoAsignacion = cliente;
+
+    const asignacionActual = this.obtenerAsignacionActiva(cliente.id);
+
+    this.entrenadorSeleccionadoId = asignacionActual?.entrenadorId || '';
+    this.mostrarFormularioAsignacion = true;
+    this.mostrarFormularioCrear = false;
+
+    this.cdr.detectChanges();
+  }
+
+  cancelarAsignacion(): void {
+    this.mostrarFormularioAsignacion = false;
+    this.clienteSeleccionadoAsignacion = null;
+    this.entrenadorSeleccionadoId = '';
+    this.guardandoAsignacion = false;
+    this.cdr.detectChanges();
+  }
+
+  guardarAsignacionEntrenador(): void {
+    if (!this.clienteSeleccionadoAsignacion) {
+      return;
+    }
+
+    if (!this.entrenadorSeleccionadoId) {
+      alert('Selecciona un entrenador.');
+      return;
+    }
+
+    const cliente = this.clienteSeleccionadoAsignacion;
+    const asignacionActual = this.obtenerAsignacionActiva(cliente.id);
+
+    if (asignacionActual && asignacionActual.entrenadorId === this.entrenadorSeleccionadoId) {
+      alert('Este cliente ya está asignado a ese entrenador.');
+      return;
+    }
+
+    this.guardandoAsignacion = true;
+
+    const crearNueva = () => {
+      this.asignacionesApi.crearAsignacion({
+        clienteId: cliente.id,
+        entrenadorId: this.entrenadorSeleccionadoId
+      }).subscribe({
+        next: () => {
+          this.guardandoAsignacion = false;
+          this.cancelarAsignacion();
+          this.cargarUsuarios();
+        },
+        error: (err) => {
+          console.error('Error creando asignación', err);
+          this.guardandoAsignacion = false;
+          alert(this.obtenerMensajeError(err, 'No se pudo crear la asignación.'));
+          this.cdr.detectChanges();
+        }
+      });
+    };
+
+    if (asignacionActual) {
+      this.asignacionesApi.cambiarEstado(asignacionActual.id, false).subscribe({
+        next: () => crearNueva(),
+        error: (err) => {
+          console.error('Error inactivando asignación anterior', err);
+          this.guardandoAsignacion = false;
+          alert(this.obtenerMensajeError(err, 'No se pudo inactivar la asignación anterior.'));
+          this.cdr.detectChanges();
+        }
+      });
+
+      return;
+    }
+
+    crearNueva();
+  }
+
+  obtenerAsignacionActiva(clienteId: string): AsignacionEntrenadorClienteDTO | undefined {
+    return this.asignaciones.find(
+      a => a.clienteId === clienteId && a.activo
+    );
+  }
+
+  textoEntrenadorAsignado(usuario: UsuarioResumen): string {
+    if (!this.esCliente(usuario)) {
+      return 'No aplica';
+    }
+
+    const asignacion = this.obtenerAsignacionActiva(usuario.id);
+
+    return asignacion?.entrenadorNombre || 'Sin asignar';
+  }
+
+  textoBotonAsignacion(usuario: UsuarioResumen): string {
+    return this.obtenerAsignacionActiva(usuario.id) ? 'Cambiar' : 'Asignar';
+  }
+
+  // ================== HELPERS ==================
+
+  esCliente(usuario: UsuarioResumen): boolean {
+    return Array.isArray(usuario.roles) &&
+      usuario.roles.some(r => String(r).toUpperCase().includes('CLIENTE'));
+  }
+
+  esEntrenador(usuario: UsuarioResumen): boolean {
+    return Array.isArray(usuario.roles) &&
+      usuario.roles.some(r => String(r).toUpperCase().includes('ENTRENADOR'));
+  }
+
+  normalizarTexto(texto: string | undefined | null): string {
+    return (texto || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  obtenerMensajeError(err: any, mensajeDefault: string): string {
+    return err?.error?.message ||
+      err?.error?.mensaje ||
+      err?.error ||
+      err?.message ||
+      mensajeDefault;
+  }
+
   actualizar(): void {
     this.cargarUsuarios();
   }
 
-  //Guardar el usuario
-guardarUsuario(): void {
-  const payload = {
-    tipoDoc: this.nuevoUsuario.tipoDoc,
-    numDoc: this.nuevoUsuario.numDoc,
-    nombres: this.nuevoUsuario.nombres,
-    apellidos: this.nuevoUsuario.apellidos,
-    correo: this.nuevoUsuario.correo,
-    telefono: this.nuevoUsuario.telefono,
-    password: 'Ironfit123*', // Contraseña por defecto
-    roles: [this.nuevoUsuario.rol]
-  };
-
-  console.log('Guardando nuevo usuario (payload):', payload);
-
-  this.usuariosApi.crearUsuario(payload).subscribe({
-    next: (usuarioCreado) => {
-      console.log('Usuario creado en backend:', usuarioCreado);
-      this.mostrarFormularioCrear = false;
-      this.cargarUsuarios(); // recarga desde /resumen
-    },
-    error: (err) => {
-      console.error('Error creando usuario', err);
-    }
-  });
-
-}
-
-toggleEstado(usuario: UsuarioResumen): void {
-  const nuevoEstado = !usuario.activo;
-
-  this.usuariosApi.cambiarEstado(usuario.id, nuevoEstado).subscribe({
-    next: (usuarioActualizado) => {
-      console.log('Estado actualizado:', usuarioActualizado);
-
-      usuario.activo = usuarioActualizado.activo;
-      this.aplicarFiltros();
-      this.cdr.detectChanges();
-    },
-    error: (err) => {
-      console.error('Error cambiando estado del usuario', err);
-    }
-  });
-}
-
-resetearPassword(usuario: UsuarioResumen): void {
-  const confirmar = confirm(`¿Resetear la contraseña de ${usuario.nombres} ${usuario.apellidos} a la clave general?`);
-
-  if (!confirmar) return;
-
-  this.usuariosApi.resetearPassword(usuario.id).subscribe({
-    next: () => {
-      console.log('Contraseña reseteada correctamente');
-      alert('Contraseña restablecida a: Ironfit123*');
-    },
-    error: (err) => {
-      console.error('Error reseteando contraseña', err);
-    }
-  });
-}
-
-volverAlDashboard(): void {
-  this.router.navigate(['/admin']);
-}
-
+  volverAlDashboard(): void {
+    this.router.navigate(['/admin']);
+  }
 }

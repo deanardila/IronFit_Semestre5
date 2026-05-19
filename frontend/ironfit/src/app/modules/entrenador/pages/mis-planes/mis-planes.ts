@@ -3,6 +3,10 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { timeout } from 'rxjs';
 import { PlanEntrenamientoDTO, PlanEntrenamientoCrearDTO, Planes } from '../../../admin/planes';
+import {
+  AsignacionEntrenadorClienteDTO,
+  AsignacionesService
+} from '../../../admin/asignaciones';
 
 @Component({
   selector: 'app-mis-planes',
@@ -34,6 +38,9 @@ export class MisPlanes implements OnInit {
   clientes: any[] = [];
   clienteSeleccionado: any = null;
 
+  clientesAsignados: any[] = [];
+  cargandoClientesAsignados = false;
+
   filtroEstado: 'TODOS' | 'ACTIVOS' | 'INACTIVOS' = 'TODOS';
 
   formulario: PlanEntrenamientoCrearDTO = this.crearFormularioVacio();
@@ -42,7 +49,8 @@ export class MisPlanes implements OnInit {
     private planesService: Planes,
     private http: HttpClient,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private asignacionesService: AsignacionesService 
   ) {}
 
   ngOnInit(): void {
@@ -58,6 +66,7 @@ export class MisPlanes implements OnInit {
       .subscribe({
         next: (res) => {
           this.entrenadorId = res?.id || '';
+          this.cargarClientesAsignados();
           this.cargarPlanes();
         },
         error: (err) => {
@@ -141,9 +150,41 @@ export class MisPlanes implements OnInit {
     this.planesFiltrados = resultado;
     this.cdr.detectChanges();
   }
+  
+  cargarClientesAsignados(): void {
+    this.cargandoClientesAsignados = true;
+
+    this.asignacionesService.listarMisClientes()
+      .pipe(timeout(this.requestTimeoutMs))
+      .subscribe({
+        next: (asignaciones: AsignacionEntrenadorClienteDTO[]) => {
+          this.clientesAsignados = (asignaciones || [])
+            .filter(asignacion => asignacion.activo)
+            .map(asignacion => ({
+              id: asignacion.clienteId,
+              nombres: this.obtenerNombresCliente(asignacion.clienteNombre),
+              apellidos: this.obtenerApellidosCliente(asignacion.clienteNombre),
+              correo: asignacion.clienteCorreo,
+              numDoc: asignacion.clienteDocumento,
+              activo: asignacion.activo,
+              nombreCompleto: asignacion.clienteNombre,
+              asignacionId: asignacion.id,
+            }));
+
+          this.cargandoClientesAsignados = false;
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => {
+          console.error('Error cargando clientes asignados', err);
+          this.clientesAsignados = [];
+          this.cargandoClientesAsignados = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
 
   buscarClientes(): void {
-    const texto = this.terminoBusquedaCliente.trim();
+    const texto = this.terminoBusquedaCliente.trim().toLowerCase();
 
     if (texto.length < 2) {
       this.clientes = [];
@@ -151,20 +192,19 @@ export class MisPlanes implements OnInit {
       return;
     }
 
-    this.http
-      .get<any[]>(`https://ironfit-backend-production.up.railway.app/api/usuarios/clientes/buscar?texto=${encodeURIComponent(texto)}`)
-      .pipe(timeout(this.requestTimeoutMs))
-      .subscribe({
-        next: (data: any[]) => {
-          this.clientes = data || [];
-          this.cdr.detectChanges();
-        },
-        error: (err: any) => {
-          console.error('Error buscando clientes', err);
-          this.clientes = [];
-          this.cdr.detectChanges();
-        }
-      });
+    this.clientes = this.clientesAsignados.filter(cliente => {
+      const nombreCompleto = `${cliente.nombres || ''} ${cliente.apellidos || ''}`.toLowerCase();
+      const documento = (cliente.numDoc || '').toLowerCase();
+      const correo = (cliente.correo || '').toLowerCase();
+
+      return (
+        nombreCompleto.includes(texto) ||
+        documento.includes(texto) ||
+        correo.includes(texto)
+      );
+    });
+
+    this.cdr.detectChanges();
   }
 
   seleccionarCliente(cliente: any): void {
@@ -172,7 +212,7 @@ export class MisPlanes implements OnInit {
     this.formulario.clienteId = cliente.id;
     this.terminoBusquedaCliente = this.construirNombreCliente(cliente);
     this.clientes = [];
-    this.error = null;
+    this.error = '';
     this.cdr.detectChanges();
   }
 
@@ -207,8 +247,8 @@ export class MisPlanes implements OnInit {
       return;
     }
 
-    if (!this.formulario.fechaInicio) {
-      this.error = 'La fecha de inicio es obligatoria.';
+    if (!this.modoEdicion && this.formulario.fechaInicio < this.minFechaPlan) {
+      this.error = 'La fecha de inicio no puede ser anterior a hoy.';
       this.cdr.detectChanges();
       return;
     }
@@ -219,7 +259,7 @@ export class MisPlanes implements OnInit {
       return;
     }
 
-    if (this.formulario.fechaInicio < this.minFechaPlan) {
+    if (!this.modoEdicion && this.formulario.fechaInicio < this.minFechaPlan) {
       this.error = 'La fecha de inicio no puede ser anterior a hoy.';
       this.cdr.detectChanges();
       return;
@@ -237,6 +277,20 @@ export class MisPlanes implements OnInit {
       return;
     }
 
+    if (!this.modoEdicion && this.formulario.clienteId) {
+  const clienteYaTienePlanActivo = this.planes.some(plan =>
+    plan.clienteId === this.formulario.clienteId &&
+    this.normalizarActivo(plan.activo)
+  );
+
+  if (clienteYaTienePlanActivo) {
+    this.error = 'Este cliente ya tiene un plan activo asignado. Debes seleccionar otro cliente o inactivar el plan actual.';
+    this.guardando = false;
+    this.cdr.detectChanges();
+    return;
+  }
+}
+
     this.formulario.entrenadorId = this.entrenadorId;
     this.guardando = true;
     this.cdr.detectChanges();
@@ -245,49 +299,30 @@ export class MisPlanes implements OnInit {
       this.planesService.actualizarPlan(this.idPlanEditando, this.formulario)
         .pipe(timeout(this.requestTimeoutMs))
         .subscribe({
-          next: (planActualizado) => {
+          next: () => {
             this.guardando = false;
             this.resetFormulario();
-
-            const planNormalizado = {
-              ...planActualizado,
-              activo: this.normalizarActivo(planActualizado.activo),
-            };
-
-            this.planes = this.planes.map(p =>
-              p.id === planNormalizado.id ? planNormalizado : p
-            );
-
-            this.aplicarFiltros();
-
-            this.cdr.detectChanges();
+            this.cargarPlanes();
           },
           error: (err: any) => {
-          console.error('Error cambiando estado del plan', err);
-          this.error = this.obtenerMensajeError(err, 'No se pudo cambiar el estado del plan.');
-          this.cambiandoEstadoId = null;
-          this.cdr.detectChanges();
+            console.error('Error actualizando plan', err);
+            this.error = this.obtenerMensajeError(err, 'No se pudo actualizar el plan.');
+            this.guardando = false;
+            this.cdr.detectChanges();
           }
         });
-        return;
-      }
+
+      return;
+    }
 
     this.planesService.crearPlan(this.formulario)
+    
       .pipe(timeout(this.requestTimeoutMs))
       .subscribe({
-        next: (planCreado) => {
+        next: () => {
           this.guardando = false;
           this.resetFormulario();
-
-          const nuevoPlan = {
-            ...planCreado,
-            activo: this.normalizarActivo(planCreado.activo),
-          };
-
-          this.planes = [nuevoPlan, ...this.planes];
-          this.aplicarFiltros();
-
-          this.cdr.detectChanges();
+          this.cargarPlanes();
         },
         error: (err: any) => {
         console.error('Error creando plan', err);
@@ -332,6 +367,16 @@ export class MisPlanes implements OnInit {
     this.cdr.detectChanges();
   }
 
+  gestionarRutinas(plan: PlanEntrenamientoDTO): void {
+    if (!plan?.id) {
+      this.error = 'No se pudo identificar el plan seleccionado.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.router.navigate(['/entrenador/MisRutinas', plan.id]);
+  }
+
   cambiarEstado(plan: PlanEntrenamientoDTO): void {
   if (this.cambiandoEstadoId || this.guardando) {
     return;
@@ -346,16 +391,9 @@ export class MisPlanes implements OnInit {
   this.planesService.cambiarEstado(plan.id, nuevoEstado)
     .pipe(timeout(this.requestTimeoutMs))
     .subscribe({
-      next: (planActualizado) => {
-        this.planes = this.planes.map(p =>
-          p.id === planActualizado.id
-            ? { ...planActualizado, activo: this.normalizarActivo(planActualizado.activo) }
-            : p
-        );
-
-        this.aplicarFiltros();
+      next: () => {
         this.cambiandoEstadoId = null;
-        this.cdr.detectChanges();
+        this.cargarPlanes();
       },
       error: (err: any) => {
         console.error('Error cambiando estado del plan', err);
@@ -413,57 +451,42 @@ export class MisPlanes implements OnInit {
   }
 
   private obtenerMensajeError(err: any, mensajePorDefecto: string): string {
-  console.error('ERROR COMPLETO DEL BACKEND:', err);
-
-  if (err?.name === 'TimeoutError') {
-    return 'El servidor tardó demasiado en responder. Intenta nuevamente.';
-  }
-
-  // Error como texto plano
-  if (typeof err?.error === 'string') {
-    if (err.error.includes('Este cliente ya tiene un plan activo asignado')) {
-      return 'Este cliente ya tiene un plan asignado. Debes desactivar el plan actual antes de crear otro.';
+    if (err?.status === 403) {
+      return 'No se puede crear el plan. Verifica que estés ingresando como entrenador o que el cliente no tenga ya un plan activo asignado.';
     }
-
-    if (err.error.includes('La descripción')) {
-      return err.error;
-    }
-
-    return err.error || mensajePorDefecto;
-  }
-
-  // Error JSON normal
-  const mensajeBackend =
-    err?.error?.mensaje ||
-    err?.error?.message ||
-    err?.error?.error ||
-    err?.message;
-
-  if (mensajeBackend?.includes('Este cliente ya tiene un plan activo asignado')) {
-    return 'Este cliente ya tiene un plan asignado. Debes desactivar el plan actual antes de crear otro.';
-  }
-
-  if (mensajeBackend) {
-    return mensajeBackend;
-  }
-
-  // Errores de validación de Spring Boot
-  if (err?.error?.errors && Array.isArray(err.error.errors)) {
-    const primerError = err.error.errors[0];
 
     return (
-      primerError?.defaultMessage ||
-      primerError?.message ||
+      err?.error?.mensaje ||
+      err?.error?.message ||
+      err?.error?.error ||
+      err?.message ||
       mensajePorDefecto
     );
   }
+    private construirNombreCliente(cliente: any): string {
+      const nombreCompleto = `${cliente?.nombres || ''} ${cliente?.apellidos || ''}`.trim();
+      const documento = cliente?.numDoc ? ` - ${cliente.numDoc}` : '';
+      return `${nombreCompleto}${documento}`.trim();
+    }
 
-  return mensajePorDefecto;
-}
-  private construirNombreCliente(cliente: any): string {
-    const nombreCompleto = `${cliente?.nombres || ''} ${cliente?.apellidos || ''}`.trim();
-    const documento = cliente?.numDoc ? ` - ${cliente.numDoc}` : '';
-    return `${nombreCompleto}${documento}`.trim();
+    private obtenerNombresCliente(nombreCompleto: string | undefined | null): string {
+    const partes = (nombreCompleto || '').trim().split(' ').filter(Boolean);
+
+    if (partes.length <= 2) {
+      return partes[0] || '';
+    }
+
+    return partes.slice(0, 2).join(' ');
+  }
+
+  private obtenerApellidosCliente(nombreCompleto: string | undefined | null): string {
+    const partes = (nombreCompleto || '').trim().split(' ').filter(Boolean);
+
+    if (partes.length <= 2) {
+      return partes.slice(1).join(' ');
+    }
+
+    return partes.slice(2).join(' ');
   }
 
   private normalizarPlanes(data: any): PlanEntrenamientoDTO[] {

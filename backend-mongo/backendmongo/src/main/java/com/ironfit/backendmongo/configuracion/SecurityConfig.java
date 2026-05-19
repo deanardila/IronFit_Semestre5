@@ -62,12 +62,16 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Rutas públicas
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
                 .requestMatchers("/api/usuarios/me").authenticated()
                 .requestMatchers("/api/usuarios/clientes/buscar")
                     .hasAnyRole("ADMIN", "ENTRENADOR")
                 .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
+
+                // Rutas de ejercicios
                 .requestMatchers(HttpMethod.GET, "/api/ejercicios/**")
                     .hasAnyRole("ADMIN", "ENTRENADOR")
                 .requestMatchers(HttpMethod.POST, "/api/ejercicios/**")
@@ -76,14 +80,46 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN", "ENTRENADOR")
                 .requestMatchers(HttpMethod.PATCH, "/api/ejercicios/**")
                     .hasAnyRole("ADMIN", "ENTRENADOR")
+
+                // Rutas de planes de entrenamiento
                 .requestMatchers(HttpMethod.GET, "/api/planes/**")
-                    .hasAnyRole("ADMIN", "ENTRENADOR")
+                    .hasAnyRole("ADMIN", "ENTRENADOR", "CLIENTE")
                 .requestMatchers(HttpMethod.POST, "/api/planes/**")
-                    .hasAnyRole("ADMIN", "ENTRENADOR")
+                    .hasRole("ENTRENADOR")
                 .requestMatchers(HttpMethod.PUT, "/api/planes/**")
-                    .hasAnyRole("ADMIN", "ENTRENADOR")
+                    .hasRole("ENTRENADOR")
                 .requestMatchers(HttpMethod.PATCH, "/api/planes/**")
+                    .hasRole("ENTRENADOR")
+
+                // Rutas de rutinas
+                .requestMatchers(HttpMethod.GET, "/api/rutinas/**")
+                    .hasAnyRole("ADMIN", "ENTRENADOR", "CLIENTE")
+                .requestMatchers(HttpMethod.POST, "/api/rutinas/**")
+                    .hasRole("ENTRENADOR")
+                .requestMatchers(HttpMethod.PUT, "/api/rutinas/**")
+                    .hasRole("ENTRENADOR")
+                .requestMatchers(HttpMethod.PATCH, "/api/rutinas/**")
+                    .hasRole("ENTRENADOR")
+
+                // Rutas de ejercicios en rutinas
+                .requestMatchers(HttpMethod.GET, "/api/rutina-ejercicios/**")
+                    .hasAnyRole("ADMIN", "ENTRENADOR", "CLIENTE")
+                .requestMatchers(HttpMethod.POST, "/api/rutina-ejercicios/**")
+                    .hasRole("ENTRENADOR")
+                .requestMatchers(HttpMethod.PUT, "/api/rutina-ejercicios/**")
+                    .hasRole("ENTRENADOR")
+                .requestMatchers(HttpMethod.DELETE, "/api/rutina-ejercicios/**")
+                    .hasRole("ENTRENADOR")
+
+                // Rutas de entrenamientos realizados
+                .requestMatchers(HttpMethod.POST, "/api/entrenamientos-realizados/**")
+                    .hasRole("CLIENTE")
+                .requestMatchers(HttpMethod.GET, "/api/entrenamientos-realizados/mis-entrenamientos")
+                    .hasRole("CLIENTE")
+                .requestMatchers(HttpMethod.GET, "/api/entrenamientos-realizados/cliente/**")
                     .hasAnyRole("ADMIN", "ENTRENADOR")
+
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(

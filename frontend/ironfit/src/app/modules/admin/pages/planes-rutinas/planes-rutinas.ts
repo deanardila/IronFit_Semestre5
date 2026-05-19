@@ -1,167 +1,232 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
-import { Planes, PlanResumen } from '../../planes';
+import { Router } from '@angular/router';
 
-// Si ya tienes RutinaDTO definido en otro lado, puedes importarlo.
-// De momento lo declaro aquí simple:
-export interface RutinaDTO {
-  idRutina: number;
-  nombre: string;
-  descripcion?: string;
-}
+import { Planes, PlanEntrenamientoDTO } from '../../planes';
+import { RutinaDTO, RutinaService } from '../../rutina';
 
 @Component({
   selector: 'app-planes-rutinas',
   standalone: false,
   templateUrl: './planes-rutinas.html',
-  styleUrls: ['./planes-rutinas.scss'],   // 👈 styleUrls (en plural)
+  styleUrls: ['./planes-rutinas.scss'],
 })
 export class PlanesRutinas implements OnInit {
 
-  planes: PlanResumen[] = [];
-  planesFiltrados: PlanResumen[] = [];
+  planes: PlanEntrenamientoDTO[] = [];
+  planesFiltrados: PlanEntrenamientoDTO[] = [];
+
   rutinas: RutinaDTO[] = [];
   rutinasFiltradas: RutinaDTO[] = [];
 
-  idPlanSeleccionado: number | null = null;
+  planSeleccionado: PlanEntrenamientoDTO | null = null;
 
-  cargando: boolean = false;          // para mostrar "Cargando..."
-  error: string | null = null;
-  
-  // Búsqueda por nombre
-  terminoBusqueda: string = '';
+  cargando = false;
+  error = '';
 
-  showingRutinas: boolean = false;    // si estás mostrando la tabla de rutinas
+  terminoBusqueda = '';
+  filtroEstado = 'TODOS';
+
+  showingRutinas = false;
+
+  totalPlanes = 0;
+  totalActivos = 0;
+  totalInactivos = 0;
+  clientesConPlan = 0;
+  entrenadoresConPlan = 0;
+
+resumenPorEntrenador: { etiqueta: string; total: number; porcentaje: number }[] = [];
+resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = [];
 
   constructor(
     private planesApi: Planes,
+    private rutinaService: RutinaService,
     private cdr: ChangeDetectorRef,
-    private router: Router,
-    private route: ActivatedRoute
+    private router: Router
   ) {}
 
   ngOnInit(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
-
-    if (idParam) {
-      const idPlan = Number(idParam);
-      if (!isNaN(idPlan)) {
-        this.idPlanSeleccionado = idPlan;
-        this.cargarRutinas(idPlan);
-        return;
-      }
-    }
-
-    // Si no viene id en la ruta, mostramos primero la lista de planes
     this.cargarPlanes();
   }
 
-  // 🔹 Cargar lista de planes (resumen)
   cargarPlanes(): void {
     this.cargando = true;
-    this.error = null;
+    this.error = '';
+    this.showingRutinas = false;
+    this.planSeleccionado = null;
+    this.rutinas = [];
+    this.rutinasFiltradas = [];
+    this.cdr.detectChanges();
 
-    this.planesApi.getResumenPlanes().subscribe({
-      next: (lista: PlanResumen[]) => {
-        console.log('Planes recibidos:', lista);
-        this.planes = lista ?? [];
-
-        // Extraer el nombre del estado si viene como objeto
-        this.planes = this.planes.map(p => ({
-          ...p,
-          estado: typeof p.estado === 'string'
-            ? p.estado
-            : (p as any).estado?.name || 'Desconocido'
-        }));
-
-        console.log('Planes asignados al componente:', this.planes);
+    this.planesApi.getPlanes().subscribe({
+      next: (lista) => {
+        this.planes = lista || [];
         this.aplicarFiltrosPlanes();
+        this.calcularMetricas();
         this.cargando = false;
         this.cdr.detectChanges();
       },
-      error: (err: any) => {
+      error: (err) => {
         console.error('Error cargando planes', err);
+        this.error = 'Ocurrió un error al cargar los planes de entrenamiento.';
         this.planes = [];
-        this.error = 'Ocurrió un error al cargar los planes.';
+        this.planesFiltrados = [];
+        this.calcularMetricas();
         this.cargando = false;
         this.cdr.detectChanges();
       }
     });
+  }
+
+  verRutinas(plan: PlanEntrenamientoDTO): void {
+    if (!plan?.id) {
+      this.error = 'No se pudo identificar el plan seleccionado.';
+      return;
+    }
+
+    this.planSeleccionado = plan;
+    this.showingRutinas = true;
+    this.cargando = true;
+    this.error = '';
+    this.terminoBusqueda = '';
+    this.cdr.detectChanges();
+
+    this.rutinaService.getRutinasPorPlan(plan.id).subscribe({
+      next: (lista) => {
+        this.rutinas = lista || [];
+        this.aplicarFiltrosRutinas();
+        this.cargando = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error cargando rutinas del plan', err);
+        this.error = 'No se pudieron cargar las rutinas del plan.';
+        this.rutinas = [];
+        this.rutinasFiltradas = [];
+        this.cargando = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  aplicarFiltrosPlanes(): void {
+    const busqueda = this.normalizarTexto(this.terminoBusqueda);
+
+    this.planesFiltrados = this.planes.filter(plan => {
+      const coincideBusqueda =
+        !busqueda ||
+        this.normalizarTexto(plan.nombre).includes(busqueda) ||
+        this.normalizarTexto(plan.objetivo).includes(busqueda) ||
+        this.normalizarTexto(plan.clienteNombre).includes(busqueda) ||
+        this.normalizarTexto(plan.entrenadorNombre).includes(busqueda);
+
+      const coincideEstado =
+        this.filtroEstado === 'TODOS' ||
+        (this.filtroEstado === 'ACTIVO' && plan.activo) ||
+        (this.filtroEstado === 'INACTIVO' && !plan.activo);
+
+      return coincideBusqueda && coincideEstado;
+    });
+
+    this.calcularMetricas();
+  }
+
+  aplicarFiltrosRutinas(): void {
+    const busqueda = this.normalizarTexto(this.terminoBusqueda);
+
+    this.rutinasFiltradas = this.rutinas.filter(rutina => {
+      return !busqueda ||
+        this.normalizarTexto(rutina.nombre).includes(busqueda) ||
+        this.normalizarTexto(rutina.descripcion).includes(busqueda) ||
+        this.normalizarTexto(rutina.diaSemana).includes(busqueda);
+    });
+  }
+
+  calcularMetricas(): void {
+    const base = this.planesFiltrados.length ? this.planesFiltrados : this.planes;
+
+    this.totalPlanes = base.length;
+    this.totalActivos = base.filter(p => p.activo).length;
+    this.totalInactivos = base.filter(p => !p.activo).length;
+
+    this.clientesConPlan = new Set(
+      base
+        .filter(p => p.clienteId)
+        .map(p => p.clienteId)
+    ).size;
+
+    this.entrenadoresConPlan = new Set(
+      base
+        .filter(p => p.entrenadorId)
+        .map(p => p.entrenadorId)
+    ).size;
+
+    this.resumenPorEntrenador = this.construirResumenPorCampo(
+      base,
+      p => p.entrenadorNombre || 'Sin entrenador'
+    );
+
+    this.resumenPorObjetivo = this.construirResumenPorCampo(
+      base,
+      p => p.objetivo || 'Sin objetivo'
+    );
+  }
+
+  construirResumenPorCampo(
+  planes: PlanEntrenamientoDTO[],
+  selector: (plan: PlanEntrenamientoDTO) => string
+): { etiqueta: string; total: number; porcentaje: number }[] {
+  const mapa = new Map<string, number>();
+
+  planes.forEach(plan => {
+    const clave = selector(plan) || 'Sin dato';
+    mapa.set(clave, (mapa.get(clave) || 0) + 1);
+  });
+
+  const total = planes.length || 1;
+
+  return Array.from(mapa.entries())
+    .map(([clave, cantidad]) => ({
+      etiqueta: clave,
+      total: cantidad,
+      porcentaje: Math.round((cantidad / total) * 100)
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 4);
+}
+
+  volverAListaPlanes(): void {
+    this.showingRutinas = false;
+    this.planSeleccionado = null;
+    this.rutinas = [];
+    this.rutinasFiltradas = [];
+    this.terminoBusqueda = '';
+    this.aplicarFiltrosPlanes();
+    this.cdr.detectChanges();
+  }
+
+  actualizar(): void {
+    if (this.showingRutinas && this.planSeleccionado) {
+      this.verRutinas(this.planSeleccionado);
+      return;
+    }
+
+    this.cargarPlanes();
   }
 
   volverAlDashboard(): void {
     this.router.navigate(['/admin']);
   }
 
-  // Ir desde la lista de planes a la vista de rutinas
-  verRutina(idPlan: number): void {
-    this.router.navigate(['/planes', idPlan, 'rutina']);
+  estadoPlan(plan: PlanEntrenamientoDTO): string {
+    return plan.activo ? 'ACTIVO' : 'INACTIVO';
   }
 
-  // 🔹 Cargar rutinas de un plan (simple, SIN JSON.parse raro)
-  cargarRutinas(idPlan: number): void {
-  this.showingRutinas = true;
-  this.cargando = true;
-
-  this.planesApi.getRutinasPorPlan(idPlan).subscribe({
-    next: (lista: RutinaDTO[]) => {
-      console.log('Rutinas recibidas (JSON):', lista);
-      this.rutinas = Array.isArray(lista) ? lista : [];
-      this.aplicarFiltrosRutinas();
-      this.cargando = false;
-      this.cdr.detectChanges();
-    },
-    error: (err: any) => {
-      console.error('Error cargando rutinas', err);
-      this.rutinas = [];
-      this.cargando = false;
-      this.cdr.detectChanges();
-    }
-  });
-  }
-
-  aplicarFiltrosPlanes(): void {
-    const busqueda = this.terminoBusqueda.toLowerCase().trim();
-    
-    if (!busqueda) {
-      this.planesFiltrados = [...this.planes];
-      return;
-    }
-    
-    this.planesFiltrados = this.planes.filter(p => {
-      const nombrePlan = (p.nombrePlan || '').toLowerCase();
-      const nombreCliente = (p.nombreCliente || '').toLowerCase();
-      const nombreEntrenador = (p.nombreEntrenador || '').toLowerCase();
-      
-      return nombrePlan.includes(busqueda) || 
-             nombreCliente.includes(busqueda) ||
-             nombreEntrenador.includes(busqueda);
-    });
-    
-    this.cdr.detectChanges();
-  }
-
-  aplicarFiltrosRutinas(): void {
-    const busqueda = this.terminoBusqueda.toLowerCase().trim();
-    
-    if (!busqueda) {
-      this.rutinasFiltradas = [...this.rutinas];
-      return;
-    }
-    
-    this.rutinasFiltradas = this.rutinas.filter(r => {
-      const nombreRutina = (r.nombre || '').toLowerCase();
-      const descripcion = (r.descripcion || '').toLowerCase();
-      
-      return nombreRutina.includes(busqueda) || descripcion.includes(busqueda);
-    });
-    
-    this.cdr.detectChanges();
-  }
-
-  volverAListaPlanes(): void {
-    this.showingRutinas = false;
-    this.terminoBusqueda = '';
-    this.router.navigate(['/admin/planes']);
+  normalizarTexto(texto: string | undefined | null): string {
+    return (texto || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
   }
 }

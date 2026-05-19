@@ -1,6 +1,5 @@
 package com.ironfit.backendmongo.dto.planes;
 
-import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -22,7 +21,6 @@ public class PlanEntrenamientoActualizarRequest {
     private String objetivo;
 
     @NotNull(message = "La fecha de inicio es obligatoria")
-    @FutureOrPresent(message = "La fecha de inicio no puede ser anterior a hoy")
     private LocalDate fechaInicio;
 
     @NotNull(message = "La fecha de fin es obligatoria")

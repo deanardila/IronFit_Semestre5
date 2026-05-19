@@ -411,4 +411,65 @@ section p {
     .planes-tabla td {
         padding: 0.5rem 0.65rem;
     }
+
+    .mensaje-error {
+        margin-top: 1.5rem;
+        padding: 1rem 1.25rem;
+        border: 1px solid rgba(248, 113, 113, 0.45);
+        border-radius: 14px;
+        background: rgba(127, 29, 29, 0.18);
+        color: #fca5a5;
+        font-weight: 600;
+    }
+
+    .mensaje-error p {
+        margin: 0;
+    }
+
+    .acciones-tabla {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    }
+
+    .btn-rutinas-tabla {
+        border: none;
+        border-radius: 999px;
+        padding: 0.42rem 0.85rem;
+        background: rgba(255, 138, 31, 0.12);
+        color: #ffb347;
+        border: 1px solid rgba(255, 138, 31, 0.35);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+
+    .btn-rutinas-tabla:hover {
+        background: rgba(255, 138, 31, 0.22);
+        border-color: rgba(255, 138, 31, 0.65);
+        transform: translateY(-1px);
+    }
+
+    .btn-rutinas-tabla:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .acciones-tabla {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    }
+
+    .acciones-tabla .btn-editar-tabla {
+    min-width: 82px;
+    text-align: center;
+    }
 }

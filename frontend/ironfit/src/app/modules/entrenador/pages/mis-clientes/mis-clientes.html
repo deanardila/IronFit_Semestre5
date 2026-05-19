@@ -2,61 +2,73 @@
 
     <header class="clientes-header">
         <div class="clientes-header-left">
-            <button class="btn-volver" (click)="volverAlDashboard()">← Volver</button>
-            <h1>Mis clientes activos</h1>
+        <button class="btn-volver" type="button" (click)="volverAlDashboard()">
+            ← Volver
+        </button>
+
+        <h1>Mis clientes activos</h1>
         </div>
+
         <div class="clientes-header-right">
-            <div class="busqueda-container">
-                <input
-                    type="text"
-                    class="input-busqueda"
-                    placeholder="🔍 Buscar por cédula o nombre..."
-                    [(ngModel)]="terminoBusqueda"
-                    (input)="aplicarFiltros()" />
-            </div>
-            <span class="clientes-filtros" *ngIf="terminoBusqueda">
-                Filtrando: "{{ terminoBusqueda }}"
-            </span>
+        <div class="busqueda-container">
+            <input
+            type="text"
+            class="input-busqueda"
+            placeholder="🔍 Buscar por cédula, nombre o correo..."
+            [(ngModel)]="terminoBusqueda"
+            (input)="aplicarFiltros()" />
+        </div>
+
+        <button
+            type="button"
+            class="btn-actualizar"
+            (click)="cargarClientes()"
+            [disabled]="cargando">
+            {{ cargando ? 'Cargando...' : 'Actualizar' }}
+        </button>
         </div>
     </header>
 
-    <!-- LOADER -->
-    <section *ngIf="cargando">
-        <p>Cargando clientes...</p>
+    <section *ngIf="cargando" class="estado-panel">
+        <p>⏳ Cargando clientes...</p>
     </section>
 
-    <!-- TABLA -->
-    <section *ngIf="!cargando">
-        <table class="clientes-tabla" *ngIf="clientesFiltrados.length > 0; else noHayClientes">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nombres</th>
-                    <th>Apellidos</th>
-                    <th>Correo</th>
-                    <th>Teléfono</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr *ngFor="let cliente of clientesFiltrados">
-                    <td>{{ cliente.id }}</td>
-                    <td>{{ cliente.nombres }}</td>
-                    <td>{{ cliente.apellidos }}</td>
-                    <td>{{ cliente.correo || '-' }}</td>
-                    <td>{{ cliente.telefono || '-' }}</td>
-                    <td>
-                        <span class="estado-badge" [class.activo]="cliente.activo">
-                            {{ cliente.activo ? 'Activo' : 'Inactivo' }}
-                        </span>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+    <section *ngIf="!cargando && error" class="mensaje-error">
+        <p>⚠️ {{ error }}</p>
+    </section>
 
-        <ng-template #noHayClientes>
-            <p class="no-resultados">No tienes clientes activos en este momento.</p>
-        </ng-template>
+    <section *ngIf="!cargando && !error && clientesFiltrados.length === 0">
+        <p class="no-resultados">No tienes clientes activos asignados en este momento.</p>
+    </section>
+
+    <section *ngIf="!cargando && !error && clientesFiltrados.length > 0">
+        <table class="clientes-tabla">
+        <thead>
+            <tr>
+            <th>ID</th>
+            <th>Nombres</th>
+            <th>Apellidos</th>
+            <th>Correo</th>
+            <th>Teléfono</th>
+            <th>Estado</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr *ngFor="let cliente of clientesFiltrados">
+            <td>{{ cliente.id }}</td>
+            <td>{{ cliente.nombres }}</td>
+            <td>{{ cliente.apellidos || '-' }}</td>
+            <td>{{ cliente.correo || '-' }}</td>
+            <td>{{ cliente.telefono || '-' }}</td>
+            <td>
+                <span class="estado-badge" [class.activo]="cliente.activo">
+                {{ cliente.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+            </td>
+            </tr>
+        </tbody>
+        </table>
     </section>
 
 </div>

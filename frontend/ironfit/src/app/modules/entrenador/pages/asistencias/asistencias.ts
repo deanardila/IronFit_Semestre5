@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { AsistenciaService, ResumenAsistenciaPlan } from '../../../admin/asistencia';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { finalize, timeout } from 'rxjs';
+import { AsistenciaReporteDTO, AsistenciaService } from '../../../admin/asistencia';
 import { Router, ActivatedRoute } from '@angular/router';
 
 @Component({
@@ -9,41 +10,146 @@ import { Router, ActivatedRoute } from '@angular/router';
   styleUrls: ['./asistencias.scss'],
 })
 export class Asistencias implements OnInit {
-  resumen: ResumenAsistenciaPlan[] = [];
-  asistenciasFiltradas: ResumenAsistenciaPlan[] = [];
+
+  asistencias: AsistenciaReporteDTO[] = [];
+  asistenciasFiltradas: AsistenciaReporteDTO[] = [];
+
   cargando = false;
-  terminoBusqueda = '';
-  idEntrenador: number = Number(localStorage.getItem('idEntrenador')) || 0;
   error: string | null = null;
 
-  constructor(private asistenciaApi: AsistenciaService, private router: Router, private route: ActivatedRoute) {}
+  terminoBusqueda = '';
+  filtroEstado = 'TODOS';
+
+  totalRegistros = 0;
+  totalAsistio = 0;
+  totalNoAsistio = 0;
+  porcentajeCumplimiento = 0;
+
+  constructor(
+    private asistenciaApi: AsistenciaService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
       const buscar = params['buscar'];
-      if (buscar) { this.terminoBusqueda = buscar; }
-      this.cargarResumen();
+      if (buscar) {
+        this.terminoBusqueda = buscar;
+      }
+
+      this.cargarAsistencias();
     });
   }
 
-  cargarResumen(): void {
-    if (!this.idEntrenador) { this.error = 'ID de entrenador no disponible'; return; }
-    this.cargando = true; this.error = null;
-    this.asistenciaApi.obtenerResumenPorEntrenador(this.idEntrenador).subscribe({
-      next: lista => { this.resumen = lista || []; this.aplicarFiltros(); this.cargando = false; },
-      error: err => { console.error('Error cargando asistencias', err); this.error = 'No se pudo cargar el resumen.'; this.resumen = []; this.asistenciasFiltradas = []; this.cargando = false; }
-    });
+  cargarAsistencias(): void {
+    this.cargando = true;
+    this.error = null;
+    this.cdr.detectChanges();
+
+    this.asistenciaApi.obtenerReporteAsistencias()
+      .pipe(
+        timeout(15000),
+        finalize(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (lista) => {
+          console.log('Asistencias recibidas:', lista);
+
+          this.asistencias = Array.isArray(lista) ? lista : [];
+          this.aplicarFiltros();
+        },
+        error: (err) => {
+          console.error('Error cargando asistencias', err);
+
+          this.error = 'No se pudieron cargar las asistencias.';
+          this.asistencias = [];
+          this.asistenciasFiltradas = [];
+          this.calcularMetricas();
+        }
+      });
   }
 
   aplicarFiltros(): void {
-    const b = this.terminoBusqueda.trim().toLowerCase();
-    if (!b) { this.asistenciasFiltradas = [...this.resumen]; return; }
-    this.asistenciasFiltradas = this.resumen.filter(r =>
-      r.nombreCliente.toLowerCase().includes(b) ||
-      r.nombrePlan.toLowerCase().includes(b)
-    );
+    const b = this.normalizarTexto(this.terminoBusqueda);
+
+    this.asistenciasFiltradas = this.asistencias.filter(a => {
+      const coincideBusqueda =
+        !b ||
+        this.normalizarTexto(a.clienteNombre).includes(b) ||
+        this.normalizarTexto(a.clienteDocumento).includes(b) ||
+        this.normalizarTexto(a.planNombre).includes(b) ||
+        this.normalizarTexto(a.rutinaNombre).includes(b) ||
+        this.normalizarTexto(a.estadoAsistencia).includes(b);
+
+      const coincideEstado =
+        this.filtroEstado === 'TODOS' ||
+        this.normalizarEstado(a.estadoAsistencia) === this.filtroEstado;
+
+      return coincideBusqueda && coincideEstado;
+    });
+
+    this.calcularMetricas();
   }
 
-  actualizar(): void { this.cargarResumen(); }
-  volver(): void { this.router.navigate(['/entrenador']); }
+  calcularMetricas(): void {
+    this.totalRegistros = this.asistenciasFiltradas.length;
+
+    this.totalAsistio = this.asistenciasFiltradas.filter(a =>
+      this.normalizarEstado(a.estadoAsistencia) === 'ASISTIO'
+    ).length;
+
+    this.totalNoAsistio = this.asistenciasFiltradas.filter(a =>
+      this.normalizarEstado(a.estadoAsistencia) === 'NO_ASISTIO'
+    ).length;
+
+    this.porcentajeCumplimiento = this.totalRegistros > 0
+      ? Math.round((this.totalAsistio / this.totalRegistros) * 100)
+      : 0;
+  }
+
+  claseEstado(estado: string): string {
+    const normalizado = this.normalizarEstado(estado);
+
+    if (normalizado === 'ASISTIO') {
+      return 'asistio';
+    }
+
+    if (normalizado === 'NO_ASISTIO') {
+      return 'no-asistio';
+    }
+
+    return 'sin-rutina';
+  }
+
+  normalizarEstado(estado: string | undefined | null): string {
+    return (estado || '')
+      .toString()
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '_');
+  }
+
+  normalizarTexto(texto: string | undefined | null): string {
+    return (texto || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  actualizar(): void {
+    this.cargarAsistencias();
+  }
+
+  volver(): void {
+    this.router.navigate(['/entrenador']);
+  }
 }

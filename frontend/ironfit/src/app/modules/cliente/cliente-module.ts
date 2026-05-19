@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Routes } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { BaseChartDirective } from 'ng2-charts';
 import { DashboardCliente } from './pages/dashboard-cliente/dashboard-cliente';
 import { MiPlan } from './pages/mi-plan/mi-plan';
 import { MisRutinas } from './pages/mis-rutinas/mis-rutinas';
@@ -31,6 +32,7 @@ const routes: Routes = [
     CommonModule,
     FormsModule,
     SharedModule,
+    BaseChartDirective,
     RouterModule.forChild(routes),
   ]
 })

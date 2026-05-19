@@ -58,11 +58,11 @@
 			<div class="form-row">
 				<label>Fecha inicio</label>
 				<input
-						type="date"
-						name="fechaInicio"
-						[(ngModel)]="formulario.fechaInicio"
-						[min]="minFechaPlan"
-						required
+					type="date"
+					name="fechaInicio"
+					[(ngModel)]="formulario.fechaInicio"
+					[min]="modoEdicion ? null : minFechaPlan"
+					required
 					/>
 			</div>
 
@@ -85,18 +85,22 @@
 					name="busquedaCliente"
 					[(ngModel)]="terminoBusquedaCliente"
 					(input)="buscarClientes()"
-					placeholder="Buscar por nombre o identificación"
+					placeholder="Buscar cliente asignado por nombre o documento"
 					autocomplete="off"
 				/>
 
+				<small class="ayuda-cliente" *ngIf="!cargandoClientesAsignados && clientesAsignados.length === 0">
+					No tienes clientes asignados. Solicita al administrador una asignación.
+				</small>
+
 				<ul *ngIf="clientes.length > 0" class="lista-clientes">
 					<li
-						*ngFor="let cliente of clientes"
-						(click)="seleccionarCliente(cliente)"
-						class="item-cliente"
+					*ngFor="let cliente of clientes"
+					(click)="seleccionarCliente(cliente)"
+					class="item-cliente"
 					>
-						<strong>{{ cliente.nombres }} {{ cliente.apellidos }}</strong>
-						<span> - {{ cliente.numDoc || 'Sin documento' }}</span>
+					<strong>{{ cliente.nombres }} {{ cliente.apellidos }}</strong>
+					<span> - {{ cliente.numDoc || 'Sin documento' }}</span>
 					</li>
 				</ul>
 			</div>
@@ -127,8 +131,8 @@
 		<p>⏳ Cargando planes...</p>
 	</section>
 
-	<section *ngIf="!cargando && error">
-		<p style="color: #fda4af;">⚠️ {{ error }}</p>
+	<section *ngIf="!cargando && error" class="mensaje-error">
+		<p>⚠️ {{ error }}</p>
 	</section>
 
 	<section *ngIf="!cargando && !error && planesFiltrados.length === 0">
@@ -171,13 +175,23 @@
 						</button>
 					</td>
 					<td>
-						<button
+						<div class="acciones-tabla">
+							<button
 							type="button"
 							class="btn-editar-tabla"
 							(click)="editarPlan(p)"
 							[disabled]="guardando || cambiandoEstadoId === p.id">
 							Editar
-						</button>
+							</button>
+
+							<button
+							type="button"
+							class="btn-editar-tabla"
+							(click)="gestionarRutinas(p)"
+							[disabled]="guardando || cambiandoEstadoId === p.id">
+							Rutinas
+							</button>
+						</div>
 					</td>
 				</tr>
 			</tbody>
