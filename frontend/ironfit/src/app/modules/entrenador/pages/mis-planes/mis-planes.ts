@@ -43,6 +43,13 @@ export class MisPlanes implements OnInit {
 
   filtroEstado: 'TODOS' | 'ACTIVOS' | 'INACTIVOS' = 'TODOS';
 
+  paginaActual = 0;
+  tamanoPagina = 20;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
+
   formulario: PlanEntrenamientoCrearDTO = this.crearFormularioVacio();
 
   constructor(
@@ -50,7 +57,7 @@ export class MisPlanes implements OnInit {
     private http: HttpClient,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private asignacionesService: AsignacionesService 
+    private asignacionesService: AsignacionesService
   ) {}
 
   ngOnInit(): void {
@@ -66,7 +73,7 @@ export class MisPlanes implements OnInit {
       .subscribe({
         next: (res) => {
           this.entrenadorId = res?.id || '';
-          this.cargarClientesAsignados();
+          this.cargarClientesAsignadosInicial();
           this.cargarPlanes();
         },
         error: (err) => {
@@ -82,22 +89,81 @@ export class MisPlanes implements OnInit {
     this.cargando = true;
     this.error = null;
 
-    this.planesService.getPlanes()
+    this.planesService.getPlanesPaginados(
+      this.paginaActual,
+      this.tamanoPagina,
+      this.terminoBusqueda,
+      this.obtenerActivoFiltro()
+    )
       .pipe(timeout(this.requestTimeoutMs))
       .subscribe({
-        next: (data: any) => {
-          this.planes = this.normalizarPlanes(data);
-          this.aplicarFiltros();
+        next: (respuesta) => {
+          this.planes = this.normalizarPlanes(respuesta.contenido || []);
+          this.planesFiltrados = this.planes;
+
+          this.totalElementos = respuesta.totalElementos ?? 0;
+          this.totalPaginas = respuesta.totalPaginas ?? 0;
+          this.ultimaPagina = respuesta.ultima ?? true;
+          this.paginaActual = respuesta.pagina ?? 0;
+          this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
+
           this.cargando = false;
           this.cdr.detectChanges();
         },
         error: (err: any) => {
-          console.error('Error cargando planes', err);
+          console.error('Error cargando planes paginados', err);
           this.error = this.obtenerMensajeError(err, 'No se pudieron cargar los planes.');
+          this.planes = [];
+          this.planesFiltrados = [];
+
+          this.totalElementos = 0;
+          this.totalPaginas = 0;
+          this.ultimaPagina = true;
+
           this.cargando = false;
           this.cdr.detectChanges();
         }
       });
+  }
+
+  aplicarFiltros(): void {
+    this.paginaActual = 0;
+    this.cargarPlanes();
+  }
+
+  obtenerActivoFiltro(): boolean | null {
+    if (this.filtroEstado === 'ACTIVOS') {
+      return true;
+    }
+
+    if (this.filtroEstado === 'INACTIVOS') {
+      return false;
+    }
+
+    return null;
+  }
+
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
+      return;
+    }
+
+    this.paginaActual--;
+    this.cargarPlanes();
+  }
+
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
+
+    this.paginaActual++;
+    this.cargarPlanes();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarPlanes();
   }
 
   toggleFormularioCrear(): void {
@@ -116,60 +182,16 @@ export class MisPlanes implements OnInit {
     this.cdr.detectChanges();
   }
 
-  aplicarFiltros(): void {
-    const texto = this.terminoBusqueda.trim().toLowerCase();
-
-    let resultado = [...this.planes];
-
-    if (this.filtroEstado === 'ACTIVOS') {
-      resultado = resultado.filter(plan => this.normalizarActivo(plan.activo) === true);
-    }
-
-    if (this.filtroEstado === 'INACTIVOS') {
-      resultado = resultado.filter(plan => this.normalizarActivo(plan.activo) === false);
-    }
-
-    if (texto) {
-      resultado = resultado.filter((plan) => {
-        const nombre = plan.nombre?.toLowerCase() || '';
-        const cliente = plan.clienteNombre?.toLowerCase() || plan.clienteId?.toLowerCase() || '';
-        const entrenador = plan.entrenadorNombre?.toLowerCase() || plan.entrenadorId?.toLowerCase() || '';
-        const objetivo = plan.objetivo?.toLowerCase() || '';
-        const descripcion = plan.descripcion?.toLowerCase() || '';
-
-        return (
-          nombre.includes(texto) ||
-          cliente.includes(texto) ||
-          entrenador.includes(texto) ||
-          objetivo.includes(texto) ||
-          descripcion.includes(texto)
-        );
-      });
-    }
-
-    this.planesFiltrados = resultado;
-    this.cdr.detectChanges();
-  }
-  
-  cargarClientesAsignados(): void {
+  cargarClientesAsignadosInicial(): void {
     this.cargandoClientesAsignados = true;
 
-    this.asignacionesService.listarMisClientes()
+    this.asignacionesService.listarMisClientesPaginado(0, 20, '')
       .pipe(timeout(this.requestTimeoutMs))
       .subscribe({
-        next: (asignaciones: AsignacionEntrenadorClienteDTO[]) => {
-          this.clientesAsignados = (asignaciones || [])
+        next: (respuesta) => {
+          this.clientesAsignados = (respuesta.contenido || [])
             .filter(asignacion => asignacion.activo)
-            .map(asignacion => ({
-              id: asignacion.clienteId,
-              nombres: this.obtenerNombresCliente(asignacion.clienteNombre),
-              apellidos: this.obtenerApellidosCliente(asignacion.clienteNombre),
-              correo: asignacion.clienteCorreo,
-              numDoc: asignacion.clienteDocumento,
-              activo: asignacion.activo,
-              nombreCompleto: asignacion.clienteNombre,
-              asignacionId: asignacion.id,
-            }));
+            .map(asignacion => this.convertirAsignacionACliente(asignacion));
 
           this.cargandoClientesAsignados = false;
           this.cdr.detectChanges();
@@ -184,7 +206,7 @@ export class MisPlanes implements OnInit {
   }
 
   buscarClientes(): void {
-    const texto = this.terminoBusquedaCliente.trim().toLowerCase();
+    const texto = this.terminoBusquedaCliente.trim();
 
     if (texto.length < 2) {
       this.clientes = [];
@@ -192,19 +214,35 @@ export class MisPlanes implements OnInit {
       return;
     }
 
-    this.clientes = this.clientesAsignados.filter(cliente => {
-      const nombreCompleto = `${cliente.nombres || ''} ${cliente.apellidos || ''}`.toLowerCase();
-      const documento = (cliente.numDoc || '').toLowerCase();
-      const correo = (cliente.correo || '').toLowerCase();
+    this.asignacionesService.listarMisClientesPaginado(0, 20, texto)
+      .pipe(timeout(this.requestTimeoutMs))
+      .subscribe({
+        next: (respuesta) => {
+          this.clientes = (respuesta.contenido || [])
+            .filter(asignacion => asignacion.activo)
+            .map(asignacion => this.convertirAsignacionACliente(asignacion));
 
-      return (
-        nombreCompleto.includes(texto) ||
-        documento.includes(texto) ||
-        correo.includes(texto)
-      );
-    });
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error buscando clientes asignados', err);
+          this.clientes = [];
+          this.cdr.detectChanges();
+        }
+      });
+  }
 
-    this.cdr.detectChanges();
+  convertirAsignacionACliente(asignacion: AsignacionEntrenadorClienteDTO): any {
+    return {
+      id: asignacion.clienteId,
+      nombres: this.obtenerNombresCliente(asignacion.clienteNombre),
+      apellidos: this.obtenerApellidosCliente(asignacion.clienteNombre),
+      correo: asignacion.clienteCorreo,
+      numDoc: asignacion.clienteDocumento,
+      activo: asignacion.activo,
+      nombreCompleto: asignacion.clienteNombre,
+      asignacionId: asignacion.id,
+    };
   }
 
   seleccionarCliente(cliente: any): void {
@@ -247,6 +285,12 @@ export class MisPlanes implements OnInit {
       return;
     }
 
+    if (!this.formulario.fechaInicio) {
+      this.error = 'La fecha de inicio es obligatoria.';
+      this.cdr.detectChanges();
+      return;
+    }
+
     if (!this.modoEdicion && this.formulario.fechaInicio < this.minFechaPlan) {
       this.error = 'La fecha de inicio no puede ser anterior a hoy.';
       this.cdr.detectChanges();
@@ -255,12 +299,6 @@ export class MisPlanes implements OnInit {
 
     if (!this.formulario.fechaFin) {
       this.error = 'La fecha de fin es obligatoria.';
-      this.cdr.detectChanges();
-      return;
-    }
-
-    if (!this.modoEdicion && this.formulario.fechaInicio < this.minFechaPlan) {
-      this.error = 'La fecha de inicio no puede ser anterior a hoy.';
       this.cdr.detectChanges();
       return;
     }
@@ -277,20 +315,6 @@ export class MisPlanes implements OnInit {
       return;
     }
 
-    if (!this.modoEdicion && this.formulario.clienteId) {
-  const clienteYaTienePlanActivo = this.planes.some(plan =>
-    plan.clienteId === this.formulario.clienteId &&
-    this.normalizarActivo(plan.activo)
-  );
-
-  if (clienteYaTienePlanActivo) {
-    this.error = 'Este cliente ya tiene un plan activo asignado. Debes seleccionar otro cliente o inactivar el plan actual.';
-    this.guardando = false;
-    this.cdr.detectChanges();
-    return;
-  }
-}
-
     this.formulario.entrenadorId = this.entrenadorId;
     this.guardando = true;
     this.cdr.detectChanges();
@@ -302,6 +326,7 @@ export class MisPlanes implements OnInit {
           next: () => {
             this.guardando = false;
             this.resetFormulario();
+            this.paginaActual = 0;
             this.cargarPlanes();
           },
           error: (err: any) => {
@@ -316,22 +341,22 @@ export class MisPlanes implements OnInit {
     }
 
     this.planesService.crearPlan(this.formulario)
-    
       .pipe(timeout(this.requestTimeoutMs))
       .subscribe({
         next: () => {
           this.guardando = false;
           this.resetFormulario();
+          this.paginaActual = 0;
           this.cargarPlanes();
         },
         error: (err: any) => {
-        console.error('Error creando plan', err);
-        this.error = this.obtenerMensajeError(err, 'No se pudo crear el plan.');
-        this.guardando = false;
-        this.cdr.detectChanges();
+          console.error('Error creando plan', err);
+          this.error = this.obtenerMensajeError(err, 'No se pudo crear el plan.');
+          this.guardando = false;
+          this.cdr.detectChanges();
         }
       });
-    }
+  }
 
   editarPlan(plan: PlanEntrenamientoDTO): void {
     if (this.guardando || this.cambiandoEstadoId) {
@@ -378,30 +403,30 @@ export class MisPlanes implements OnInit {
   }
 
   cambiarEstado(plan: PlanEntrenamientoDTO): void {
-  if (this.cambiandoEstadoId || this.guardando) {
-    return;
-  }
+    if (this.cambiandoEstadoId || this.guardando) {
+      return;
+    }
 
-  const nuevoEstado = !this.normalizarActivo(plan.activo);
+    const nuevoEstado = !this.normalizarActivo(plan.activo);
 
-  this.error = null;
-  this.cambiandoEstadoId = plan.id;
-  this.cdr.detectChanges();
+    this.error = null;
+    this.cambiandoEstadoId = plan.id;
+    this.cdr.detectChanges();
 
-  this.planesService.cambiarEstado(plan.id, nuevoEstado)
-    .pipe(timeout(this.requestTimeoutMs))
-    .subscribe({
-      next: () => {
-        this.cambiandoEstadoId = null;
-        this.cargarPlanes();
-      },
-      error: (err: any) => {
-        console.error('Error cambiando estado del plan', err);
-        this.error = this.obtenerMensajeError(err, 'No se pudo cambiar el estado del plan.');
-        this.cambiandoEstadoId = null;
-        this.cdr.detectChanges();
-      }
-    });
+    this.planesService.cambiarEstado(plan.id, nuevoEstado)
+      .pipe(timeout(this.requestTimeoutMs))
+      .subscribe({
+        next: () => {
+          this.cambiandoEstadoId = null;
+          this.cargarPlanes();
+        },
+        error: (err: any) => {
+          console.error('Error cambiando estado del plan', err);
+          this.error = this.obtenerMensajeError(err, 'No se pudo cambiar el estado del plan.');
+          this.cambiandoEstadoId = null;
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   cancelarFormulario(): void {
@@ -435,6 +460,7 @@ export class MisPlanes implements OnInit {
       return;
     }
 
+    this.paginaActual = 0;
     this.cargarPlanes();
   }
 
@@ -463,13 +489,14 @@ export class MisPlanes implements OnInit {
       mensajePorDefecto
     );
   }
-    private construirNombreCliente(cliente: any): string {
-      const nombreCompleto = `${cliente?.nombres || ''} ${cliente?.apellidos || ''}`.trim();
-      const documento = cliente?.numDoc ? ` - ${cliente.numDoc}` : '';
-      return `${nombreCompleto}${documento}`.trim();
-    }
 
-    private obtenerNombresCliente(nombreCompleto: string | undefined | null): string {
+  private construirNombreCliente(cliente: any): string {
+    const nombreCompleto = `${cliente?.nombres || ''} ${cliente?.apellidos || ''}`.trim();
+    const documento = cliente?.numDoc ? ` - ${cliente.numDoc}` : '';
+    return `${nombreCompleto}${documento}`.trim();
+  }
+
+  private obtenerNombresCliente(nombreCompleto: string | undefined | null): string {
     const partes = (nombreCompleto || '').trim().split(' ').filter(Boolean);
 
     if (partes.length <= 2) {
@@ -492,11 +519,13 @@ export class MisPlanes implements OnInit {
   private normalizarPlanes(data: any): PlanEntrenamientoDTO[] {
     const lista = Array.isArray(data)
       ? data
-      : Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data?.content)
-          ? data.content
-          : [];
+      : Array.isArray(data?.contenido)
+        ? data.contenido
+        : Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.content)
+            ? data.content
+            : [];
 
     return lista.map((plan: any) => ({
       ...plan,
@@ -520,5 +549,4 @@ export class MisPlanes implements OnInit {
 
     return !!valor;
   }
-
 }

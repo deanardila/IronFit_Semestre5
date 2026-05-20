@@ -15,6 +15,15 @@ export interface UsuarioResumen {
     roles: string[]; // ["ROLE_CLIENTE", "ROLE_ENTRENADOR"]
 }
 
+export interface PaginaResponse<T> {
+    contenido: T[];
+    pagina: number;
+    tamano: number;
+    totalElementos: number;
+    totalPaginas: number;
+    ultima: boolean;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -26,6 +35,36 @@ export class Usuarios {
 
     getUsuariosResumen(): Observable<UsuarioResumen[]> {
         return this.http.get<UsuarioResumen[]>(`${this.baseUrl}/resumen`);
+    }
+
+    getUsuariosPaginados(
+        page: number,
+        size: number,
+        buscar?: string,
+        rol?: string | null,
+        activo?: boolean | null
+    ): Observable<PaginaResponse<UsuarioResumen>> {
+        const params: any = {
+            page,
+            size
+        };
+
+        if (buscar && buscar.trim()) {
+            params.buscar = buscar.trim();
+        }
+
+        if (rol) {
+            params.rol = rol;
+        }
+
+        if (activo !== null && activo !== undefined) {
+            params.activo = activo;
+        }
+
+        return this.http.get<PaginaResponse<UsuarioResumen>>(
+            `${this.baseUrl}/paginado`,
+            { params }
+        );
     }
 
     crearUsuario(usuario: any): Observable<any> {

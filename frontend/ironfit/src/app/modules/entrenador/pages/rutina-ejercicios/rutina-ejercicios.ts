@@ -23,6 +23,7 @@ export class RutinaEjercicios implements OnInit {
   rutinaId = '';
 
   cargando = false;
+  cargandoCatalogo = false;
   guardando = false;
   eliminandoId: string | null = null;
 
@@ -34,6 +35,13 @@ export class RutinaEjercicios implements OnInit {
   ejerciciosFiltrados: EjercicioDTO[] = [];
 
   terminoBusqueda = '';
+
+  paginaCatalogoActual = 0;
+  tamanoPaginaCatalogo = 20;
+  totalElementosCatalogo = 0;
+  totalPaginasCatalogo = 0;
+  ultimaPaginaCatalogo = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
 
   mostrarFormulario = false;
   modoEdicion = false;
@@ -73,6 +81,10 @@ export class RutinaEjercicios implements OnInit {
   }
 
   cargarDatos(): void {
+    this.cargarEjerciciosRutina();
+  }
+
+  cargarEjerciciosRutina(): void {
     this.cargando = true;
     this.error = '';
     this.mensajeExito = '';
@@ -80,43 +92,85 @@ export class RutinaEjercicios implements OnInit {
     this.rutinaService.getEjerciciosPorRutina(this.rutinaId).subscribe({
       next: (ejerciciosRutina) => {
         this.ejerciciosRutina = ejerciciosRutina || [];
-
-        this.ejerciciosService.getEjercicios().subscribe({
-          next: (ejercicios) => {
-            this.ejerciciosCatalogo = ejercicios || [];
-            this.aplicarBusqueda();
-            this.cargando = false;
-            this.cdr.detectChanges();
-          },
-          error: (err) => {
-            console.error('Error cargando catálogo de ejercicios', err);
-            this.error = 'No se pudo cargar el catálogo de ejercicios.';
-            this.cargando = false;
-            this.cdr.detectChanges();
-          }
-        });
+        this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error cargando ejercicios de rutina', err);
         this.error = 'No se pudieron cargar los ejercicios de la rutina.';
+        this.ejerciciosRutina = [];
         this.cargando = false;
         this.cdr.detectChanges();
       }
     });
   }
 
-  aplicarBusqueda(): void {
-    const termino = this.normalizarTexto(this.terminoBusqueda);
+  cargarCatalogoEjercicios(): void {
+    this.cargandoCatalogo = true;
 
-    this.ejerciciosFiltrados = this.ejerciciosCatalogo.filter(ejercicio => {
-      if (!termino) return true;
+    this.ejerciciosService.getEjerciciosPaginados(
+      this.paginaCatalogoActual,
+      this.tamanoPaginaCatalogo,
+      this.terminoBusqueda,
+      null,
+      null,
+      true
+    ).subscribe({
+      next: (respuesta) => {
+        this.ejerciciosCatalogo = respuesta.contenido || [];
+        this.ejerciciosFiltrados = this.ejerciciosCatalogo;
 
-      return (
-        this.normalizarTexto(ejercicio.nombre).includes(termino) ||
-        this.normalizarTexto(ejercicio.categoria).includes(termino) ||
-        this.normalizarTexto(ejercicio.grupoMuscular).includes(termino)
-      );
+        this.totalElementosCatalogo = respuesta.totalElementos ?? 0;
+        this.totalPaginasCatalogo = respuesta.totalPaginas ?? 0;
+        this.ultimaPaginaCatalogo = respuesta.ultima ?? true;
+        this.paginaCatalogoActual = respuesta.pagina ?? 0;
+        this.tamanoPaginaCatalogo = respuesta.tamano ?? this.tamanoPaginaCatalogo;
+
+        this.cargandoCatalogo = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error cargando catálogo paginado de ejercicios', err);
+        this.error = 'No se pudo cargar el catálogo de ejercicios.';
+        this.ejerciciosCatalogo = [];
+        this.ejerciciosFiltrados = [];
+
+        this.totalElementosCatalogo = 0;
+        this.totalPaginasCatalogo = 0;
+        this.ultimaPaginaCatalogo = true;
+
+        this.cargandoCatalogo = false;
+        this.cdr.detectChanges();
+      }
     });
+  }
+
+  aplicarBusqueda(): void {
+    this.paginaCatalogoActual = 0;
+    this.cargarCatalogoEjercicios();
+  }
+
+  irPaginaCatalogoAnterior(): void {
+    if (this.paginaCatalogoActual <= 0) {
+      return;
+    }
+
+    this.paginaCatalogoActual--;
+    this.cargarCatalogoEjercicios();
+  }
+
+  irPaginaCatalogoSiguiente(): void {
+    if (this.ultimaPaginaCatalogo || this.paginaCatalogoActual >= this.totalPaginasCatalogo - 1) {
+      return;
+    }
+
+    this.paginaCatalogoActual++;
+    this.cargarCatalogoEjercicios();
+  }
+
+  cambiarTamanoPaginaCatalogo(): void {
+    this.paginaCatalogoActual = 0;
+    this.cargarCatalogoEjercicios();
   }
 
   mostrarCrear(): void {
@@ -136,6 +190,9 @@ export class RutinaEjercicios implements OnInit {
       pesoSugerido: 0,
       orden: this.ejerciciosRutina.length + 1,
     };
+
+    this.paginaCatalogoActual = 0;
+    this.cargarCatalogoEjercicios();
   }
 
   seleccionarEjercicioCatalogo(ejercicio: EjercicioDTO): void {
@@ -164,6 +221,8 @@ export class RutinaEjercicios implements OnInit {
       pesoSugerido: item.pesoSugerido || 0,
       orden: item.orden || 1,
     };
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   guardar(): void {
@@ -191,7 +250,7 @@ export class RutinaEjercicios implements OnInit {
           this.mensajeExito = 'Ejercicio actualizado correctamente.';
           this.guardando = false;
           this.cancelarFormulario();
-          this.cargarDatos();
+          this.cargarEjerciciosRutina();
         },
         error: (err) => {
           console.error('Error actualizando ejercicio de rutina', err);
@@ -209,7 +268,7 @@ export class RutinaEjercicios implements OnInit {
         this.mensajeExito = 'Ejercicio agregado correctamente.';
         this.guardando = false;
         this.cancelarFormulario();
-        this.cargarDatos();
+        this.cargarEjerciciosRutina();
       },
       error: (err) => {
         console.error('Error agregando ejercicio a rutina', err);
@@ -229,7 +288,7 @@ export class RutinaEjercicios implements OnInit {
       next: () => {
         this.mensajeExito = 'Ejercicio eliminado de la rutina.';
         this.eliminandoId = null;
-        this.cargarDatos();
+        this.cargarEjerciciosRutina();
       },
       error: (err) => {
         console.error('Error eliminando ejercicio de rutina', err);
@@ -268,6 +327,15 @@ export class RutinaEjercicios implements OnInit {
     this.mostrarFormulario = false;
     this.modoEdicion = false;
     this.ejercicioEditandoId = null;
+    this.terminoBusqueda = '';
+
+    this.ejerciciosCatalogo = [];
+    this.ejerciciosFiltrados = [];
+
+    this.paginaCatalogoActual = 0;
+    this.totalElementosCatalogo = 0;
+    this.totalPaginasCatalogo = 0;
+    this.ultimaPaginaCatalogo = true;
 
     this.formulario = {
       rutinaId: this.rutinaId,
@@ -286,7 +354,11 @@ export class RutinaEjercicios implements OnInit {
   }
 
   actualizar(): void {
-    this.cargarDatos();
+    this.cargarEjerciciosRutina();
+
+    if (this.mostrarFormulario && !this.modoEdicion) {
+      this.cargarCatalogoEjercicios();
+    }
   }
 
   normalizarTexto(texto: string | undefined | null): string {

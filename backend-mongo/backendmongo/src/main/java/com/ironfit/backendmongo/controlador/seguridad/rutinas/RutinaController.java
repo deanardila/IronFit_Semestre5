@@ -1,4 +1,4 @@
-package com.ironfit.backendmongo.controlador.rutinas;
+package com.ironfit.backendmongo.controlador.seguridad.rutinas;
 
 import com.ironfit.backendmongo.dto.rutinas.RutinaRequest;
 import com.ironfit.backendmongo.dto.rutinas.RutinaResponse;

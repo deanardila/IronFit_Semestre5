@@ -23,6 +23,15 @@ export interface EjercicioCrearDTO {
     tipoEquipo: string | null;
 }
 
+export interface PaginaResponse<T> {
+    contenido: T[];
+    pagina: number;
+    tamano: number;
+    totalElementos: number;
+    totalPaginas: number;
+    ultima: boolean;
+}
+
 @Injectable({
     providedIn: 'root',
 })
@@ -35,6 +44,41 @@ export class Ejercicios {
         return this.http.get<EjercicioDTO[]>(this.apiUrl);
     }
 
+    getEjerciciosPaginados(
+        page: number,
+        size: number,
+        buscar?: string,
+        categoria?: string | null,
+        grupoMuscular?: string | null,
+        activo?: boolean | null
+    ): Observable<PaginaResponse<EjercicioDTO>> {
+        const params: any = {
+            page,
+            size
+        };
+
+        if (buscar && buscar.trim()) {
+            params.buscar = buscar.trim();
+        }
+
+        if (categoria) {
+            params.categoria = categoria;
+        }
+
+        if (grupoMuscular) {
+            params.grupoMuscular = grupoMuscular;
+        }
+
+        if (activo !== null && activo !== undefined) {
+            params.activo = activo;
+        }
+
+        return this.http.get<PaginaResponse<EjercicioDTO>>(
+            `${this.apiUrl}/paginado`,
+            { params }
+        );
+    }
+
     crearEjercicio(ejercicio: EjercicioCrearDTO): Observable<EjercicioDTO> {
         return this.http.post<EjercicioDTO>(this.apiUrl, ejercicio);
     }
@@ -44,6 +88,8 @@ export class Ejercicios {
     }
 
     eliminarEjercicio(id: string): Observable<void> {
-        return this.http.delete<void>(`${this.apiUrl}/${id}`);
+        return this.http.patch<void>(`${this.apiUrl}/${id}/estado`, null, {
+            params: { activo: false }
+        });
     }
 }

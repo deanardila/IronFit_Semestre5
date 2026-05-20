@@ -7,6 +7,7 @@ import com.ironfit.backendmongo.servicio.seguridad.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
 
 import java.util.List;
 
@@ -23,6 +24,19 @@ public class UserController {
     @GetMapping("/resumen")
     public ResponseEntity<List<UserResponse>> listarResumen() {
         return ResponseEntity.ok(servicioUsuario.listarUsuarios());
+    }
+
+    @GetMapping("/paginado")
+    public ResponseEntity<PaginaResponse<UserResponse>> listarUsuariosPaginados(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) String rol,
+            @RequestParam(required = false) Boolean activo
+    ) {
+        return ResponseEntity.ok(
+                servicioUsuario.listarUsuariosPaginados(page, size, buscar, rol, activo)
+        );
     }
 
     @PostMapping("/crear")

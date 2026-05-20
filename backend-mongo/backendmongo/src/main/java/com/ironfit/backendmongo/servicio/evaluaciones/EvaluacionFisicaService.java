@@ -1,5 +1,6 @@
 package com.ironfit.backendmongo.servicio.evaluaciones;
 
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
 import com.ironfit.backendmongo.dto.evaluaciones.EvaluacionFisicaRequest;
 import com.ironfit.backendmongo.dto.evaluaciones.EvaluacionFisicaResponse;
 import com.ironfit.backendmongo.modelo.asignaciones.AsignacionEntrenadorCliente;
@@ -11,10 +12,17 @@ import com.ironfit.backendmongo.repositorio.asignaciones.AsignacionEntrenadorCli
 import com.ironfit.backendmongo.repositorio.evaluaciones.EvaluacionFisicaRepository;
 import com.ironfit.backendmongo.repositorio.seguridad.UserRepository;
 import com.ironfit.backendmongo.servicio.asignaciones.AsignacionEntrenadorClienteService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -24,17 +32,20 @@ public class EvaluacionFisicaService {
     private final UserRepository userRepository;
     private final AsignacionEntrenadorClienteService asignacionService;
     private final AsignacionEntrenadorClienteRepository asignacionRepository;
+    private final MongoTemplate mongoTemplate;
 
     public EvaluacionFisicaService(
             EvaluacionFisicaRepository evaluacionFisicaRepository,
             UserRepository userRepository,
             AsignacionEntrenadorClienteService asignacionService,
-            AsignacionEntrenadorClienteRepository asignacionRepository
+            AsignacionEntrenadorClienteRepository asignacionRepository,
+            MongoTemplate mongoTemplate
     ) {
         this.evaluacionFisicaRepository = evaluacionFisicaRepository;
         this.userRepository = userRepository;
         this.asignacionService = asignacionService;
         this.asignacionRepository = asignacionRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     public List<EvaluacionFisicaResponse> listarEvaluaciones(Authentication authentication) {
@@ -71,6 +82,97 @@ public class EvaluacionFisicaService {
         return evaluaciones.stream()
                 .map(this::convertirAResponse)
                 .toList();
+    }
+
+    public PaginaResponse<EvaluacionFisicaResponse> listarEvaluacionesPaginadas(
+            Authentication authentication,
+            int page,
+            int size,
+            String buscar
+    ) {
+        UserDocument usuarioActual = obtenerUsuarioAutenticado(authentication);
+
+        int paginaActual = Math.max(page, 0);
+        int tamanoPagina = size <= 0 ? 20 : Math.min(size, 100);
+
+        Pageable pageable = PageRequest.of(
+                paginaActual,
+                tamanoPagina,
+                Sort.by(Sort.Direction.DESC, "fecha")
+        );
+
+        Query query = new Query();
+        ArrayList<Criteria> criterios = new ArrayList<>();
+
+        if (tieneRol(usuarioActual, RoleName.ADMIN)) {
+            // ADMIN ve todas las evaluaciones.
+        } else if (tieneRol(usuarioActual, RoleName.ENTRENADOR)) {
+            List<String> clienteIds = asignacionRepository
+                    .findByEntrenadorIdAndActivoTrue(usuarioActual.getId())
+                    .stream()
+                    .map(AsignacionEntrenadorCliente::getClienteId)
+                    .toList();
+
+            criterios.add(
+                    Criteria.where("clienteId").in(
+                            clienteIds.isEmpty()
+                                    ? List.of("__sin_resultados__")
+                                    : clienteIds
+                    )
+            );
+        } else if (tieneRol(usuarioActual, RoleName.CLIENTE)) {
+            criterios.add(Criteria.where("clienteId").is(usuarioActual.getId()));
+        } else {
+            throw new RuntimeException("No tienes permisos para listar evaluaciones físicas");
+        }
+
+        if (buscar != null && !buscar.trim().isEmpty()) {
+            String texto = buscar.trim();
+
+            ArrayList<Criteria> criteriosBusqueda = new ArrayList<>();
+
+            criteriosBusqueda.add(Criteria.where("observaciones").regex(texto, "i"));
+
+            List<String> idsUsuarios = buscarIdsUsuariosPorTexto(texto);
+
+            if (!idsUsuarios.isEmpty()) {
+                criteriosBusqueda.add(Criteria.where("clienteId").in(idsUsuarios));
+                criteriosBusqueda.add(Criteria.where("entrenadorId").in(idsUsuarios));
+            }
+
+            criterios.add(new Criteria().orOperator(
+                    criteriosBusqueda.toArray(new Criteria[0])
+            ));
+        }
+
+        if (!criterios.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(criterios.toArray(new Criteria[0])));
+        }
+
+        long totalElementos = mongoTemplate.count(query, EvaluacionFisica.class);
+
+        query.with(pageable);
+
+        List<EvaluacionFisicaResponse> contenido = mongoTemplate
+                .find(query, EvaluacionFisica.class)
+                .stream()
+                .map(this::convertirAResponse)
+                .toList();
+
+        int totalPaginas = totalElementos == 0
+                ? 0
+                : (int) Math.ceil((double) totalElementos / tamanoPagina);
+
+        boolean ultima = totalPaginas == 0 || paginaActual >= totalPaginas - 1;
+
+        return new PaginaResponse<>(
+                contenido,
+                paginaActual,
+                tamanoPagina,
+                totalElementos,
+                totalPaginas,
+                ultima
+        );
     }
 
     public List<EvaluacionFisicaResponse> listarMisEvaluaciones(Authentication authentication) {
@@ -168,6 +270,30 @@ public class EvaluacionFisicaService {
         validarEntrenadorCreador(usuarioActual, evaluacion);
 
         evaluacionFisicaRepository.delete(evaluacion);
+    }
+
+    private List<String> buscarIdsUsuariosPorTexto(String texto) {
+        if (texto == null || texto.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String busqueda = texto.trim();
+
+        Query query = new Query();
+
+        query.addCriteria(new Criteria().orOperator(
+                Criteria.where("nombres").regex(busqueda, "i"),
+                Criteria.where("apellidos").regex(busqueda, "i"),
+                Criteria.where("correo").regex(busqueda, "i"),
+                Criteria.where("numDoc").regex(busqueda, "i")
+        ));
+
+        query.limit(300);
+
+        return mongoTemplate.find(query, UserDocument.class)
+                .stream()
+                .map(UserDocument::getId)
+                .toList();
     }
 
     private void validarRequest(EvaluacionFisicaRequest request) {

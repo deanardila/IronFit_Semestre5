@@ -50,17 +50,21 @@
 
     /* Campo de búsqueda */
     .busqueda-container {
-        flex: 0 1 auto;
-        min-width: 250px;
-        max-width: 400px;
+    flex: 0 1 500px;
+    min-width: 320px;
+    max-width: 560px;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
     }
 
     .input-busqueda {
-        width: 100%;
+        flex: 1;
+        width: auto;
         padding: 0.6rem 1rem;
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 138, 31, 0.3);
-        border-radius: 8px;
+        border-radius: 999px;
         color: #fff;
         font-size: 0.9rem;
         transition: all 0.3s ease;
@@ -75,6 +79,27 @@
             background: rgba(255, 255, 255, 0.08);
             box-shadow: 0 0 0 3px rgba(255, 138, 31, 0.1);
         }
+    }
+
+    .btn-buscar-usuarios {
+        border-radius: 999px;
+        padding: 0.6rem 1.1rem;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--ironfit-text);
+        border: 1px solid var(--ironfit-border);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.12s ease;
+    }
+
+    .btn-buscar-usuarios:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 138, 31, 0.5);
+        transform: translateY(-1px);
     }
 
     /* Texto de filtros activos */
@@ -542,24 +567,110 @@
         justify-content: flex-start;
     }
 
-    /* ---------- RESPONSIVE GENERAL ---------- */
+    .paginacion-usuarios {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--ironfit-radius-lg);
+    background: linear-gradient(145deg, #111111, #050505);
+    border: 1px solid var(--ironfit-border);
+    box-shadow: var(--ironfit-shadow-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
 
-    @media (max-width: 768px) {
-    .usuarios-layout {
-        padding: 1.25rem 1.1rem;
-    }
-
-    .usuarios-header {
+    .paginacion-info {
+        display: flex;
         flex-direction: column;
-        align-items: flex-start;
+        gap: 0.25rem;
     }
 
-    .usuarios-tabla {
+    .paginacion-info span {
+        font-size: 0.9rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ironfit-text);
+    }
+
+    .paginacion-info small {
+        color: var(--ironfit-text-muted);
+        font-size: 0.78rem;
+    }
+
+    .paginacion-controles {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .btn-paginacion {
+        border-radius: 999px;
+        padding: 0.55rem 1.1rem;
         font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: radial-gradient(circle at top left, #ffb347, #ff8a1f 55%, #f97316);
+        color: #111111;
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
     }
 
-    .usuarios-tabla th,
-    .usuarios-tabla td {
-        padding: 0.5rem 0.65rem;
+    .btn-paginacion:hover:not(:disabled) {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+    }
+
+    .btn-paginacion:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        filter: grayscale(0.4);
+    }
+
+    .select-paginacion {
+        padding: 0.55rem 0.8rem;
+        border-radius: 999px;
+        background: #171717;
+        border: 1px solid rgba(255, 138, 31, 0.35);
+        color: var(--ironfit-text);
+        outline: none;
+        font-weight: 700;
+    }
+
+    .select-paginacion:focus {
+        border-color: #ff8a1f;
+    }
+
+        /* ---------- RESPONSIVE GENERAL ---------- */
+    @media (max-width: 768px) { 
+        .paginacion-usuarios {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+    .paginacion-controles {
+            justify-content: space-between;
+            flex-wrap: wrap;
+    }
+
+    .btn-paginacion,
+    .select-paginacion {
+            flex: 1;
+        }
+
+    .busqueda-container {
+        min-width: 100%;
+        max-width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .input-busqueda,
+    .btn-buscar-usuarios {
+        width: 100%;
     }
 }
+

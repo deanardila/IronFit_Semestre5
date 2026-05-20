@@ -1,6 +1,10 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { finalize, timeout } from 'rxjs';
-import { AsistenciaReporteDTO, AsistenciaService } from '../../../admin/asistencia';
+import {
+  AsistenciaReporteDTO,
+  AsistenciaService,
+  FiltrosAsistencia
+} from '../../../admin/asistencia';
 import { Router, ActivatedRoute } from '@angular/router';
 
 @Component({
@@ -20,9 +24,20 @@ export class Asistencias implements OnInit {
   terminoBusqueda = '';
   filtroEstado = 'TODOS';
 
+  fechaInicio = '';
+  fechaFin = '';
+
+  paginaActual = 0;
+  tamanoPagina = 20;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
+
   totalRegistros = 0;
   totalAsistio = 0;
   totalNoAsistio = 0;
+  totalSinRutina = 0;
   porcentajeCumplimiento = 0;
 
   constructor(
@@ -35,10 +50,12 @@ export class Asistencias implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
       const buscar = params['buscar'];
+
       if (buscar) {
         this.terminoBusqueda = buscar;
       }
 
+      this.paginaActual = 0;
       this.cargarAsistencias();
     });
   }
@@ -48,7 +65,18 @@ export class Asistencias implements OnInit {
     this.error = null;
     this.cdr.detectChanges();
 
-    this.asistenciaApi.obtenerReporteAsistencias()
+    const filtros: FiltrosAsistencia = {
+      buscar: this.terminoBusqueda || undefined,
+      estado: this.filtroEstado !== 'TODOS' ? this.filtroEstado : undefined,
+      fechaInicio: this.fechaInicio || undefined,
+      fechaFin: this.fechaFin || undefined,
+    };
+
+    this.asistenciaApi.obtenerReporteAsistenciasPaginado(
+      this.paginaActual,
+      this.tamanoPagina,
+      filtros
+    )
       .pipe(
         timeout(15000),
         finalize(() => {
@@ -57,47 +85,74 @@ export class Asistencias implements OnInit {
         })
       )
       .subscribe({
-        next: (lista) => {
-          console.log('Asistencias recibidas:', lista);
+        next: (respuesta) => {
+          this.asistencias = respuesta.contenido || [];
+          this.asistenciasFiltradas = this.asistencias;
 
-          this.asistencias = Array.isArray(lista) ? lista : [];
-          this.aplicarFiltros();
+          this.totalElementos = respuesta.totalElementos ?? 0;
+          this.totalPaginas = respuesta.totalPaginas ?? 0;
+          this.ultimaPagina = respuesta.ultima ?? true;
+          this.paginaActual = respuesta.pagina ?? 0;
+          this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
+
+          this.calcularMetricas();
+          this.cdr.detectChanges();
         },
         error: (err) => {
-          console.error('Error cargando asistencias', err);
+          console.error('Error cargando asistencias paginadas', err);
 
           this.error = 'No se pudieron cargar las asistencias.';
           this.asistencias = [];
           this.asistenciasFiltradas = [];
+
+          this.totalElementos = 0;
+          this.totalPaginas = 0;
+          this.ultimaPagina = true;
+
           this.calcularMetricas();
         }
       });
   }
 
   aplicarFiltros(): void {
-    const b = this.normalizarTexto(this.terminoBusqueda);
+    this.paginaActual = 0;
+    this.cargarAsistencias();
+  }
 
-    this.asistenciasFiltradas = this.asistencias.filter(a => {
-      const coincideBusqueda =
-        !b ||
-        this.normalizarTexto(a.clienteNombre).includes(b) ||
-        this.normalizarTexto(a.clienteDocumento).includes(b) ||
-        this.normalizarTexto(a.planNombre).includes(b) ||
-        this.normalizarTexto(a.rutinaNombre).includes(b) ||
-        this.normalizarTexto(a.estadoAsistencia).includes(b);
+  limpiarFiltros(): void {
+    this.terminoBusqueda = '';
+    this.filtroEstado = 'TODOS';
+    this.fechaInicio = '';
+    this.fechaFin = '';
+    this.paginaActual = 0;
+    this.cargarAsistencias();
+  }
 
-      const coincideEstado =
-        this.filtroEstado === 'TODOS' ||
-        this.normalizarEstado(a.estadoAsistencia) === this.filtroEstado;
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
+      return;
+    }
 
-      return coincideBusqueda && coincideEstado;
-    });
+    this.paginaActual--;
+    this.cargarAsistencias();
+  }
 
-    this.calcularMetricas();
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
+
+    this.paginaActual++;
+    this.cargarAsistencias();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarAsistencias();
   }
 
   calcularMetricas(): void {
-    this.totalRegistros = this.asistenciasFiltradas.length;
+    this.totalRegistros = this.totalElementos || 0;
 
     this.totalAsistio = this.asistenciasFiltradas.filter(a =>
       this.normalizarEstado(a.estadoAsistencia) === 'ASISTIO'
@@ -107,8 +162,14 @@ export class Asistencias implements OnInit {
       this.normalizarEstado(a.estadoAsistencia) === 'NO_ASISTIO'
     ).length;
 
-    this.porcentajeCumplimiento = this.totalRegistros > 0
-      ? Math.round((this.totalAsistio / this.totalRegistros) * 100)
+    this.totalSinRutina = this.asistenciasFiltradas.filter(a =>
+      this.normalizarEstado(a.estadoAsistencia) === 'ASISTIO_SIN_RUTINA'
+    ).length;
+
+    const totalPagina = this.asistenciasFiltradas.length;
+
+    this.porcentajeCumplimiento = totalPagina > 0
+      ? Math.round((this.totalAsistio / totalPagina) * 100)
       : 0;
   }
 
@@ -146,6 +207,7 @@ export class Asistencias implements OnInit {
   }
 
   actualizar(): void {
+    this.paginaActual = 0;
     this.cargarAsistencias();
   }
 

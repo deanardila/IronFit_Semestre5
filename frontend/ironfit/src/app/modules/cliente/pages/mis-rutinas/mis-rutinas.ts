@@ -82,10 +82,10 @@ export class MisRutinas implements OnInit {
     this.ejerciciosPorRutina = {};
     this.cancelarSesion();
 
-    this.planesService.getPlanes().subscribe({
-      next: (planes) => {
-        this.planes = planes || [];
-        this.planActivo = this.planes.find(plan => this.normalizarActivo(plan.activo)) || null;
+    this.planesService.getPlanesPaginados(0, 1, '', true).subscribe({
+      next: (respuesta) => {
+        this.planes = respuesta.contenido || [];
+        this.planActivo = this.planes.length > 0 ? this.planes[0] : null;
 
         if (!this.planActivo) {
           this.cargando = false;
@@ -97,7 +97,7 @@ export class MisRutinas implements OnInit {
         this.cargarRutinasDelPlan(this.planActivo.id);
       },
       error: (err) => {
-        console.error('Error cargando plan del cliente', err);
+        console.error('Error cargando plan activo del cliente', err);
         this.error = this.obtenerMensajeError(err, 'No se pudo cargar tu plan de entrenamiento.');
         this.cargando = false;
         this.cdr.detectChanges();

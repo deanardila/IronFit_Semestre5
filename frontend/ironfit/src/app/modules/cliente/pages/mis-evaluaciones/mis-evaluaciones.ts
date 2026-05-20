@@ -24,6 +24,13 @@ export class MisEvaluaciones implements OnInit {
   cargando = false;
   error = '';
 
+  paginaActual = 0;
+  tamanoPagina = 5;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [5, 10, 20, 50];
+
   constructor(
     private router: Router,
     private evaluacionesService: EvaluacionesFisicasService,
@@ -38,26 +45,66 @@ export class MisEvaluaciones implements OnInit {
     this.cargando = true;
     this.error = '';
 
-    this.evaluacionesService.listarMisEvaluaciones()
+    this.evaluacionesService.listarEvaluacionesPaginadas(
+      this.paginaActual,
+      this.tamanoPagina
+    )
       .pipe(timeout(this.requestTimeoutMs))
       .subscribe({
-        next: (data) => {
-          this.evaluaciones = Array.isArray(data) ? data : [];
+        next: (respuesta) => {
+          this.evaluaciones = respuesta.contenido || [];
+
+          this.totalElementos = respuesta.totalElementos ?? 0;
+          this.totalPaginas = respuesta.totalPaginas ?? 0;
+          this.ultimaPagina = respuesta.ultima ?? true;
+          this.paginaActual = respuesta.pagina ?? 0;
+          this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
+
           this.ultimaEvaluacion = this.evaluaciones.length > 0 ? this.evaluaciones[0] : null;
           this.evaluacionAnterior = this.evaluaciones.length > 1 ? this.evaluaciones[1] : null;
+
           this.cargando = false;
           this.cdr.detectChanges();
         },
         error: (err) => {
-          console.error('Error cargando mis evaluaciones físicas', err);
+          console.error('Error cargando mis evaluaciones físicas paginadas', err);
+
           this.error = this.obtenerMensajeError(err, 'No se pudieron cargar tus evaluaciones físicas.');
           this.evaluaciones = [];
           this.ultimaEvaluacion = null;
           this.evaluacionAnterior = null;
+
+          this.totalElementos = 0;
+          this.totalPaginas = 0;
+          this.ultimaPagina = true;
+
           this.cargando = false;
           this.cdr.detectChanges();
         }
       });
+  }
+
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
+      return;
+    }
+
+    this.paginaActual--;
+    this.cargarMisEvaluaciones();
+  }
+
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
+
+    this.paginaActual++;
+    this.cargarMisEvaluaciones();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarMisEvaluaciones();
   }
 
   volver(): void {
@@ -69,6 +116,7 @@ export class MisEvaluaciones implements OnInit {
       return;
     }
 
+    this.paginaActual = 0;
     this.cargarMisEvaluaciones();
   }
 

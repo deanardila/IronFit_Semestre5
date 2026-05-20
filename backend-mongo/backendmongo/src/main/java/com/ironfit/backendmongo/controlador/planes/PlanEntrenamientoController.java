@@ -1,5 +1,6 @@
 package com.ironfit.backendmongo.controlador.planes;
 
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
 import com.ironfit.backendmongo.dto.planes.PlanEntrenamientoActualizarRequest;
 import com.ironfit.backendmongo.dto.planes.PlanEntrenamientoCrearRequest;
 import com.ironfit.backendmongo.dto.planes.PlanEntrenamientoResponse;
@@ -26,6 +27,25 @@ public class PlanEntrenamientoController {
     @GetMapping
     public List<PlanEntrenamientoResponse> listarPlanes(Authentication authentication) {
         return planEntrenamientoService.listarPlanes(authentication);
+    }
+
+    // LISTAR PAGINADO - ADMIN, ENTRENADOR y CLIENTE
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR','CLIENTE')")
+    @GetMapping("/paginado")
+    public PaginaResponse<PlanEntrenamientoResponse> listarPlanesPaginados(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) Boolean activo
+    ) {
+        return planEntrenamientoService.listarPlanesPaginados(
+                authentication,
+                page,
+                size,
+                buscar,
+                activo
+        );
     }
 
     // CREAR - solo ENTRENADOR

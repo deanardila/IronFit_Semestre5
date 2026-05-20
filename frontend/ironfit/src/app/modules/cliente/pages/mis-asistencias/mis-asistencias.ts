@@ -55,8 +55,18 @@ export class MisAsistencias implements OnInit {
   rachaActualSemana = 0;
   mensajeAsistencia = 'Sin registros';
   textoResumenAsistencia = '';
+
   diasSemana: DiaSemanaVista[] = [];
+
+  historialCompleto: HistorialAsistenciaVista[] = [];
   historialReciente: HistorialAsistenciaVista[] = [];
+
+  paginaActual = 0;
+  tamanoPagina = 6;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [6, 10, 20, 50];
 
   constructor(
     private entrenamientoService: EntrenamientoRealizadoService,
@@ -77,15 +87,14 @@ export class MisAsistencias implements OnInit {
     this.planActivo = null;
     this.rutinasPlan = [];
     this.entrenamientos = [];
+    this.historialCompleto = [];
+    this.historialReciente = [];
 
-    this.planesService.getPlanes().pipe(
-      switchMap((planes) => {
-        const listaPlanes = planes || [];
+    this.planesService.getPlanesPaginados(0, 1, '', true).pipe(
+      switchMap((respuestaPlanes) => {
+        const listaPlanes = respuestaPlanes?.contenido || [];
 
-        this.planActivo =
-          listaPlanes.find(plan => plan.activo) ||
-          listaPlanes[0] ||
-          null;
+        this.planActivo = listaPlanes.length > 0 ? listaPlanes[0] : null;
 
         if (!this.planActivo) {
           return forkJoin({
@@ -135,19 +144,14 @@ export class MisAsistencias implements OnInit {
       item => this.normalizarEstado(item.estado) === 'COMPLETADO'
     );
 
-    // Total de entrenamientos que el cliente sí completó
     this.sesionesTotales = completados.length;
-
-    // Sesiones esperadas según rutinas del plan hasta hoy
     this.sesionesEsperadas = this.calcularSesionesEsperadasHastaHoy();
 
-    // Si hay sesiones esperadas, calcula el porcentaje real
     if (this.sesionesEsperadas > 0) {
       this.porcentajeAsistencia = Math.round(
         (this.sesionesTotales / this.sesionesEsperadas) * 100
       );
 
-      // Evita que pase de 100% si el cliente entrenó más veces de lo esperado
       if (this.porcentajeAsistencia > 100) {
         this.porcentajeAsistencia = 100;
       }
@@ -156,33 +160,71 @@ export class MisAsistencias implements OnInit {
 
       this.textoResumenAsistencia =
         `${this.sesionesTotales} de ${this.sesionesEsperadas} esperadas · ${this.mensajeAsistencia}`;
-    }
-
-    // Si todavía no hay rutinas esperadas, pero sí hay entrenamientos guardados
-    else if (this.sesionesTotales > 0) {
+    } else if (this.sesionesTotales > 0) {
       this.porcentajeAsistencia = 0;
       this.mensajeAsistencia = 'Sin registros';
 
       this.textoResumenAsistencia =
         `${this.sesionesTotales} sesiones registradas · Rutinas pendientes por asignar`;
-    }
-
-    // Si no hay entrenamientos ni rutinas esperadas
-    else {
+    } else {
       this.porcentajeAsistencia = 0;
       this.mensajeAsistencia = 'Sin registros';
       this.textoResumenAsistencia = 'Sin registros';
     }
 
-    // Construye los círculos de la semana actual
     this.diasSemana = this.construirSemanaActual(completados);
-
-    // Cuenta cuántos días entrenó esta semana
     this.rachaActualSemana = this.diasSemana.filter(dia => dia.entrenado).length;
 
-    // Construye la lista del historial reciente
-    this.historialReciente = this.construirHistorialReciente();
-  } 
+    this.historialCompleto = this.construirHistorialCompleto();
+    this.totalElementos = this.historialCompleto.length;
+    this.totalPaginas = this.totalElementos === 0
+      ? 0
+      : Math.ceil(this.totalElementos / this.tamanoPagina);
+
+    if (this.paginaActual >= this.totalPaginas && this.totalPaginas > 0) {
+      this.paginaActual = this.totalPaginas - 1;
+    }
+
+    this.aplicarPaginaHistorial();
+  }
+
+  aplicarPaginaHistorial(): void {
+    const inicio = this.paginaActual * this.tamanoPagina;
+    const fin = inicio + this.tamanoPagina;
+
+    this.historialReciente = this.historialCompleto.slice(inicio, fin);
+
+    this.ultimaPagina =
+      this.totalPaginas === 0 || this.paginaActual >= this.totalPaginas - 1;
+  }
+
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
+      return;
+    }
+
+    this.paginaActual--;
+    this.aplicarPaginaHistorial();
+  }
+
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
+
+    this.paginaActual++;
+    this.aplicarPaginaHistorial();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+
+    this.totalPaginas = this.totalElementos === 0
+      ? 0
+      : Math.ceil(this.totalElementos / this.tamanoPagina);
+
+    this.aplicarPaginaHistorial();
+  }
 
   calcularSesionesEsperadasHastaHoy(): number {
     if (!this.planActivo || !this.planActivo.fechaInicio) {
@@ -299,14 +341,13 @@ export class MisAsistencias implements OnInit {
     });
   }
 
-  construirHistorialReciente(): HistorialAsistenciaVista[] {
+  construirHistorialCompleto(): HistorialAsistenciaVista[] {
     return [...this.entrenamientos]
       .sort((a, b) => {
         const fechaA = this.obtenerFechaSegura(a.fecha)?.getTime() || 0;
         const fechaB = this.obtenerFechaSegura(b.fecha)?.getTime() || 0;
         return fechaB - fechaA;
       })
-      .slice(0, 6)
       .map(item => {
         const ejercicios = item.ejerciciosRealizados || [];
         const completados = ejercicios.filter(e => e.completado).length;
@@ -391,6 +432,7 @@ export class MisAsistencias implements OnInit {
   }
 
   actualizar(): void {
+    this.paginaActual = 0;
     this.cargarMisAsistencias();
   }
 

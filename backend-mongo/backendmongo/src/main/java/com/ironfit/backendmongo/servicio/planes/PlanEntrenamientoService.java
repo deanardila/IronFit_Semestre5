@@ -1,5 +1,14 @@
 package com.ironfit.backendmongo.servicio.planes;
 
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+
+import java.util.ArrayList;
 import com.ironfit.backendmongo.dto.planes.PlanEntrenamientoActualizarRequest;
 import com.ironfit.backendmongo.dto.planes.PlanEntrenamientoCrearRequest;
 import com.ironfit.backendmongo.dto.planes.PlanEntrenamientoResponse;
@@ -22,15 +31,18 @@ public class PlanEntrenamientoService {
     private final PlanEntrenamientoRepository planEntrenamientoRepository;
     private final UserRepository userRepository;
     private final AsignacionEntrenadorClienteService asignacionService;
+    private final MongoTemplate mongoTemplate;
 
     public PlanEntrenamientoService(
             PlanEntrenamientoRepository planEntrenamientoRepository,
             UserRepository userRepository,
-            AsignacionEntrenadorClienteService asignacionService
+            AsignacionEntrenadorClienteService asignacionService,
+            MongoTemplate mongoTemplate
     ) {
         this.planEntrenamientoRepository = planEntrenamientoRepository;
         this.userRepository = userRepository;
         this.asignacionService = asignacionService;
+        this.mongoTemplate = mongoTemplate;
     }
 
     public List<PlanEntrenamientoResponse> listarPlanes(Authentication authentication) {
@@ -59,6 +71,91 @@ public class PlanEntrenamientoService {
         return planes.stream()
                 .map(this::convertirAResponse)
                 .toList();
+    }
+
+    public PaginaResponse<PlanEntrenamientoResponse> listarPlanesPaginados(
+            Authentication authentication,
+            int page,
+            int size,
+            String buscar,
+            Boolean activo
+    ) {
+        UserDocument usuarioActual = obtenerUsuarioAutenticado(authentication);
+
+        int paginaActual = Math.max(page, 0);
+        int tamanoPagina = size <= 0 ? 20 : Math.min(size, 100);
+
+        Pageable pageable = PageRequest.of(
+                paginaActual,
+                tamanoPagina,
+                Sort.by(Sort.Direction.DESC, "fechaCreacion")
+        );
+
+        Query query = new Query();
+        ArrayList<Criteria> criterios = new ArrayList<>();
+
+        if (tieneRol(usuarioActual, RoleName.ADMIN)) {
+            // ADMIN puede ver todos los planes.
+        } else if (tieneRol(usuarioActual, RoleName.ENTRENADOR)) {
+            criterios.add(Criteria.where("entrenadorId").is(usuarioActual.getId()));
+        } else if (tieneRol(usuarioActual, RoleName.CLIENTE)) {
+            criterios.add(Criteria.where("clienteId").is(usuarioActual.getId()));
+        } else {
+            throw new RuntimeException("No tienes permisos para listar planes");
+        }
+
+        if (activo != null) {
+            criterios.add(Criteria.where("activo").is(activo));
+        }
+
+        if (buscar != null && !buscar.trim().isEmpty()) {
+            String texto = buscar.trim();
+
+            ArrayList<Criteria> criteriosBusqueda = new ArrayList<>();
+
+            criteriosBusqueda.add(Criteria.where("nombre").regex(texto, "i"));
+            criteriosBusqueda.add(Criteria.where("descripcion").regex(texto, "i"));
+            criteriosBusqueda.add(Criteria.where("objetivo").regex(texto, "i"));
+
+            List<String> idsUsuariosCoincidentes = buscarIdsUsuariosPorTexto(texto);
+
+            if (!idsUsuariosCoincidentes.isEmpty()) {
+                criteriosBusqueda.add(Criteria.where("clienteId").in(idsUsuariosCoincidentes));
+                criteriosBusqueda.add(Criteria.where("entrenadorId").in(idsUsuariosCoincidentes));
+            }
+
+            criterios.add(new Criteria().orOperator(
+                    criteriosBusqueda.toArray(new Criteria[0])
+            ));
+        }
+
+        if (!criterios.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(criterios.toArray(new Criteria[0])));
+        }
+
+        long totalElementos = mongoTemplate.count(query, PlanEntrenamiento.class);
+
+        query.with(pageable);
+
+        List<PlanEntrenamientoResponse> contenido = mongoTemplate.find(query, PlanEntrenamiento.class)
+                .stream()
+                .map(this::convertirAResponse)
+                .toList();
+
+        int totalPaginas = totalElementos == 0
+                ? 0
+                : (int) Math.ceil((double) totalElementos / tamanoPagina);
+
+        boolean ultima = totalPaginas == 0 || paginaActual >= totalPaginas - 1;
+
+        return new PaginaResponse<>(
+                contenido,
+                paginaActual,
+                tamanoPagina,
+                totalElementos,
+                totalPaginas,
+                ultima
+        );
     }
 
     public PlanEntrenamientoResponse crearPlan(
@@ -315,6 +412,30 @@ public class PlanEntrenamientoService {
 
     return convertirAResponse(plan);
     }  
+
+    private List<String> buscarIdsUsuariosPorTexto(String texto) {
+        if (texto == null || texto.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String busqueda = texto.trim();
+
+        Query queryUsuarios = new Query();
+
+        queryUsuarios.addCriteria(new Criteria().orOperator(
+                Criteria.where("nombres").regex(busqueda, "i"),
+                Criteria.where("apellidos").regex(busqueda, "i"),
+                Criteria.where("correo").regex(busqueda, "i"),
+                Criteria.where("numDoc").regex(busqueda, "i")
+        ));
+
+        queryUsuarios.limit(200);
+
+        return mongoTemplate.find(queryUsuarios, UserDocument.class)
+                .stream()
+                .map(UserDocument::getId)
+                .toList();
+    }
     
     private void validarAccesoLecturaPlan(UserDocument usuarioActual, PlanEntrenamiento plan) {
     if (tieneRol(usuarioActual, RoleName.ADMIN)) {

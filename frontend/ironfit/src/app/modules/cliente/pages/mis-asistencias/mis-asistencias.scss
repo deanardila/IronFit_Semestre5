@@ -277,6 +277,91 @@
     gap: 0.25rem;
     }
 
+    /* ---------- PAGINACIÓN HISTORIAL CLIENTE ---------- */
+
+    .historial-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .historial-header h2 {
+        margin: 0;
+    }
+
+    .historial-header small {
+        display: block;
+        margin-top: 0.35rem;
+        color: var(--ironfit-text-muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+    }
+
+    .paginacion-controles {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-paginacion {
+        border-radius: 999px;
+        padding: 0.52rem 0.95rem;
+        font-size: 0.74rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: radial-gradient(circle at top left, #ffb347, #ff8a1f 55%, #f97316);
+        color: #111111;
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .btn-paginacion:hover:not(:disabled) {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+    }
+
+    .btn-paginacion:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        filter: grayscale(0.4);
+    }
+
+    .select-paginacion {
+        height: 36px;
+        border-radius: 999px;
+        padding: 0 0.75rem;
+        background: #171717;
+        border: 1px solid rgba(255, 138, 31, 0.35);
+        color: var(--ironfit-text);
+        outline: none;
+        font-weight: 800;
+    }
+
+    .select-paginacion:focus {
+        border-color: #ff8a1f;
+    }
+
+    @media (max-width: 800px) {
+        .historial-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .paginacion-controles {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .btn-paginacion,
+        .select-paginacion {
+            flex: 1;
+        }
+    }
+
     /* ---------- RESPONSIVE ---------- */
 
     @media (max-width: 800px) {

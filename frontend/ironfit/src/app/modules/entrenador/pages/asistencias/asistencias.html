@@ -2,66 +2,99 @@
 
 	<header class="asistencias-header">
 		<div class="asistencias-header-left">
-		<button class="btn-volver" type="button" (click)="volver()">
-			← Volver
-		</button>
+			<button class="btn-volver" type="button" (click)="volver()">
+				← Volver
+			</button>
 
-		<h1>Asistencias de clientes</h1>
+			<h1>Asistencias de clientes</h1>
 		</div>
 
 		<div class="asistencias-header-right">
-		<div class="busqueda-container">
+			<div class="busqueda-container">
+				<input
+					type="text"
+					class="input-busqueda"
+					placeholder="🔍 Buscar cliente, documento, plan o rutina..."
+					[(ngModel)]="terminoBusqueda"
+					(keyup.enter)="aplicarFiltros()" />
+
+				<button
+					type="button"
+					class="btn-buscar-asistencias"
+					(click)="aplicarFiltros()">
+					Buscar
+				</button>
+			</div>
+
 			<input
-			type="text"
-			class="input-busqueda"
-			placeholder="🔍 Buscar cliente, plan o rutina..."
-			[(ngModel)]="terminoBusqueda"
-			(input)="aplicarFiltros()" />
-		</div>
+				type="date"
+				class="input-fecha"
+				[(ngModel)]="fechaInicio"
+				title="Fecha inicio">
 
-		<select
-			class="select-estado"
-			[(ngModel)]="filtroEstado"
-			(change)="aplicarFiltros()">
-			<option value="TODOS">Todos</option>
-			<option value="ASISTIO">Asistió</option>
-			<option value="NO_ASISTIO">No asistió</option>
-			<option value="ASISTIO_SIN_RUTINA">Sin rutina</option>
-		</select>
+			<input
+				type="date"
+				class="input-fecha"
+				[(ngModel)]="fechaFin"
+				title="Fecha fin">
 
-		<button
-			class="btn-actualizar"
-			type="button"
-			(click)="actualizar()"
-			[disabled]="cargando">
-			{{ cargando ? 'Cargando...' : 'Actualizar' }}
-		</button>
+			<select
+				class="select-estado"
+				[(ngModel)]="filtroEstado"
+				(change)="aplicarFiltros()">
+				<option value="TODOS">Todos</option>
+				<option value="ASISTIO">Asistió</option>
+				<option value="NO_ASISTIO">No asistió</option>
+				<option value="ASISTIO_SIN_RUTINA">Sin rutina</option>
+			</select>
+
+			<button
+				class="btn-limpiar"
+				type="button"
+				(click)="limpiarFiltros()"
+				[disabled]="cargando">
+				Limpiar
+			</button>
+
+			<button
+				class="btn-actualizar"
+				type="button"
+				(click)="actualizar()"
+				[disabled]="cargando">
+				{{ cargando ? 'Cargando...' : 'Actualizar' }}
+			</button>
 		</div>
 	</header>
 
 	<section class="metricas-grid" *ngIf="!cargando && !error">
 		<article class="metrica-card">
-		<span>Total registros</span>
-		<strong>{{ totalRegistros }}</strong>
-		<small>asistencias encontradas</small>
+			<span>Total registros</span>
+			<strong>{{ totalRegistros }}</strong>
+			<small>asistencias encontradas</small>
 		</article>
 
 		<article class="metrica-card ok">
-		<span>Asistieron</span>
-		<strong>{{ totalAsistio }}</strong>
-		<small>sesiones cumplidas</small>
+			<span>Asistieron</span>
+			<strong>{{ totalAsistio }}</strong>
+			<small>en esta página</small>
 		</article>
 
 		<article class="metrica-card danger">
-		<span>No asistieron</span>
-		<strong>{{ totalNoAsistio }}</strong>
-		<small>faltas registradas</small>
+			<span>No asistieron</span>
+			<strong>{{ totalNoAsistio }}</strong>
+			<small>en esta página</small>
+		</article>
+
+		<article class="metrica-card warning">
+			<span>Sin rutina</span>
+			<strong>{{ totalSinRutina }}</strong>
+			<small>en esta página</small>
 		</article>
 
 		<article class="metrica-card main">
-		<span>Cumplimiento</span>
-		<strong>{{ porcentajeCumplimiento }}%</strong>
-		<small>según filtro actual</small>
+			<span>Cumplimiento</span>
+			<strong>{{ porcentajeCumplimiento }}%</strong>
+			<small>según página actual</small>
 		</article>
 	</section>
 
@@ -74,39 +107,77 @@
 	</section>
 
 	<section *ngIf="!cargando && !error && asistenciasFiltradas.length === 0" class="estado-panel">
-		<p>No hay registros de asistencia para mostrar.</p>
+		<p>📋 No hay registros de asistencia para mostrar.</p>
 	</section>
 
 	<section *ngIf="!cargando && !error && asistenciasFiltradas.length > 0">
 		<table class="asistencias-tabla">
-		<thead>
-			<tr>
-			<th>Fecha</th>
-			<th>Cliente</th>
-			<th>Documento</th>
-			<th>Plan</th>
-			<th>Rutina</th>
-			<th>Estado</th>
-			<th>Observaciones</th>
-			</tr>
-		</thead>
+			<thead>
+				<tr>
+					<th>Fecha</th>
+					<th>Cliente</th>
+					<th>Documento</th>
+					<th>Plan</th>
+					<th>Rutina</th>
+					<th>Estado</th>
+					<th>Observaciones</th>
+				</tr>
+			</thead>
 
-		<tbody>
-			<tr *ngFor="let a of asistenciasFiltradas">
-			<td>{{ a.fechaAsistencia }}</td>
-			<td>{{ a.clienteNombre || '-' }}</td>
-			<td>{{ a.clienteDocumento || '-' }}</td>
-			<td>{{ a.planNombre || '-' }}</td>
-			<td>{{ a.rutinaNombre || '-' }}</td>
-			<td>
-				<span class="estado-badge" [ngClass]="claseEstado(a.estadoAsistencia)">
-				{{ a.estadoAsistencia }}
-				</span>
-			</td>
-			<td>{{ a.observaciones || '-' }}</td>
-			</tr>
-		</tbody>
+			<tbody>
+				<tr *ngFor="let a of asistenciasFiltradas">
+					<td>{{ a.fechaAsistencia }}</td>
+					<td>{{ a.clienteNombre || '-' }}</td>
+					<td>{{ a.clienteDocumento || '-' }}</td>
+					<td>{{ a.planNombre || '-' }}</td>
+					<td>{{ a.rutinaNombre || '-' }}</td>
+					<td>
+						<span class="estado-badge" [ngClass]="claseEstado(a.estadoAsistencia)">
+							{{ a.estadoAsistencia }}
+						</span>
+					</td>
+					<td>{{ a.observaciones || '-' }}</td>
+				</tr>
+			</tbody>
 		</table>
+
+		<div class="paginacion-asistencias" *ngIf="totalElementos > 0">
+			<div class="paginacion-info">
+				<span>
+					Mostrando página {{ paginaActual + 1 }} de {{ totalPaginas || 1 }}
+				</span>
+				<small>
+					Total asistencias: {{ totalElementos }}
+				</small>
+			</div>
+
+			<div class="paginacion-controles">
+				<button
+					type="button"
+					class="btn-paginacion"
+					(click)="irPaginaAnterior()"
+					[disabled]="paginaActual === 0">
+					← Anterior
+				</button>
+
+				<select
+					class="select-paginacion"
+					[(ngModel)]="tamanoPagina"
+					(change)="cambiarTamanoPagina()">
+					<option *ngFor="let opcion of opcionesTamanoPagina" [ngValue]="opcion">
+						{{ opcion }} por página
+					</option>
+				</select>
+
+				<button
+					type="button"
+					class="btn-paginacion"
+					(click)="irPaginaSiguiente()"
+					[disabled]="ultimaPagina || paginaActual >= totalPaginas - 1">
+					Siguiente →
+				</button>
+			</div>
+		</div>
 	</section>
 
 </div>

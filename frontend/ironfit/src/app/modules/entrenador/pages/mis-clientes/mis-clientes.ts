@@ -34,6 +34,13 @@ export class MisClientes implements OnInit {
   nombreUsuario = '';
   terminoBusqueda = '';
 
+  paginaActual = 0;
+  tamanoPagina = 20;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
+
   constructor(
     private router: Router,
     private asignacionesService: AsignacionesService,
@@ -51,6 +58,7 @@ export class MisClientes implements OnInit {
         this.terminoBusqueda = buscar;
       }
 
+      this.paginaActual = 0;
       this.cargarClientes();
     });
   }
@@ -60,23 +68,37 @@ export class MisClientes implements OnInit {
     this.error = '';
     this.cdr.detectChanges();
 
-    this.asignacionesService.listarMisClientes().subscribe({
-      next: (asignaciones) => {
-        this.clientes = (asignaciones || [])
+    this.asignacionesService.listarMisClientesPaginado(
+      this.paginaActual,
+      this.tamanoPagina,
+      this.terminoBusqueda
+    ).subscribe({
+      next: (respuesta) => {
+        this.clientes = (respuesta.contenido || [])
           .filter(asignacion => asignacion.activo)
           .map(asignacion => this.convertirAsignacionACliente(asignacion));
 
-        this.aplicarFiltros();
+        this.clientesFiltrados = this.clientes;
+
+        this.totalElementos = respuesta.totalElementos ?? 0;
+        this.totalPaginas = respuesta.totalPaginas ?? 0;
+        this.ultimaPagina = respuesta.ultima ?? true;
+        this.paginaActual = respuesta.pagina ?? 0;
+        this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
 
         this.cargando = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('Error cargando clientes asignados', err);
+        console.error('Error cargando clientes asignados paginados', err);
 
         this.error = 'No se pudieron cargar tus clientes asignados.';
         this.clientes = [];
         this.clientesFiltrados = [];
+
+        this.totalElementos = 0;
+        this.totalPaginas = 0;
+        this.ultimaPagina = true;
 
         this.cargando = false;
         this.cdr.detectChanges();
@@ -102,21 +124,36 @@ export class MisClientes implements OnInit {
   }
 
   aplicarFiltros(): void {
-    const b = this.normalizarTexto(this.terminoBusqueda);
+    this.paginaActual = 0;
+    this.cargarClientes();
+  }
 
-    if (!b) {
-      this.clientesFiltrados = [...this.clientes];
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
       return;
     }
 
-    this.clientesFiltrados = this.clientes.filter(c => {
-      return (
-        this.normalizarTexto(c.nombres).includes(b) ||
-        this.normalizarTexto(c.apellidos).includes(b) ||
-        this.normalizarTexto(c.correo).includes(b) ||
-        this.normalizarTexto(c.numDoc).includes(b)
-      );
-    });
+    this.paginaActual--;
+    this.cargarClientes();
+  }
+
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
+
+    this.paginaActual++;
+    this.cargarClientes();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarClientes();
+  }
+
+  actualizar(): void {
+    this.paginaActual = 0;
+    this.cargarClientes();
   }
 
   volverAlDashboard(): void {

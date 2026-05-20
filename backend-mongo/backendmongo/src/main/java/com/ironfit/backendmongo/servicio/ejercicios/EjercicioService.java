@@ -1,4 +1,13 @@
 package com.ironfit.backendmongo.servicio.ejercicios;
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+
+import java.util.ArrayList;
 
 import com.ironfit.backendmongo.dto.ejercicios.EjercicioActualizarRequest;
 import com.ironfit.backendmongo.dto.ejercicios.EjercicioCrearRequest;
@@ -14,9 +23,14 @@ import java.util.List;
 public class EjercicioService {
 
     private final EjercicioRepository ejercicioRepository;
+    private final MongoTemplate mongoTemplate;
 
-    public EjercicioService(EjercicioRepository ejercicioRepository) {
+    public EjercicioService(
+            EjercicioRepository ejercicioRepository,
+            MongoTemplate mongoTemplate
+    ) {
         this.ejercicioRepository = ejercicioRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     public List<EjercicioResponse> listarEjercicios() {
@@ -24,6 +38,78 @@ public class EjercicioService {
                 .stream()
                 .map(this::convertirAResponse)
                 .toList();
+    }
+
+    public PaginaResponse<EjercicioResponse> listarEjerciciosPaginados(
+            int page,
+            int size,
+            String buscar,
+            String categoria,
+            String grupoMuscular,
+            Boolean activo
+    ) {
+        int paginaActual = Math.max(page, 0);
+        int tamanoPagina = size <= 0 ? 20 : Math.min(size, 100);
+
+        Pageable pageable = PageRequest.of(
+                paginaActual,
+                tamanoPagina,
+                Sort.by(Sort.Direction.ASC, "nombre")
+        );
+
+        Query query = new Query();
+        ArrayList<Criteria> criterios = new ArrayList<>();
+
+        Boolean activoFiltro = activo != null ? activo : true;
+        criterios.add(Criteria.where("activo").is(activoFiltro));
+
+        if (buscar != null && !buscar.trim().isEmpty()) {
+            String texto = buscar.trim();
+
+            criterios.add(new Criteria().orOperator(
+                    Criteria.where("nombre").regex(texto, "i"),
+                    Criteria.where("descripcion").regex(texto, "i"),
+                    Criteria.where("categoria").regex(texto, "i"),
+                    Criteria.where("grupoMuscular").regex(texto, "i"),
+                    Criteria.where("tipoEquipo").regex(texto, "i")
+            ));
+        }
+
+        if (categoria != null && !categoria.trim().isEmpty()) {
+            criterios.add(Criteria.where("categoria").regex("^" + categoria.trim() + "$", "i"));
+        }
+
+        if (grupoMuscular != null && !grupoMuscular.trim().isEmpty()) {
+            criterios.add(Criteria.where("grupoMuscular").regex("^" + grupoMuscular.trim() + "$", "i"));
+        }
+
+        if (!criterios.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(criterios.toArray(new Criteria[0])));
+        }
+
+        long totalElementos = mongoTemplate.count(query, Ejercicio.class);
+
+        query.with(pageable);
+
+        List<EjercicioResponse> contenido = mongoTemplate.find(query, Ejercicio.class)
+                .stream()
+                .map(this::convertirAResponse)
+                .toList();
+
+        int totalPaginas = totalElementos == 0
+                ? 0
+                : (int) Math.ceil((double) totalElementos / tamanoPagina);
+
+        boolean ultima = totalPaginas == 0 || paginaActual >= totalPaginas - 1;
+
+        return new PaginaResponse<>(
+                contenido,
+                paginaActual,
+                tamanoPagina,
+                totalElementos,
+                totalPaginas,
+                ultima
+        );
     }
 
     public EjercicioResponse crearEjercicio(EjercicioCrearRequest request) {

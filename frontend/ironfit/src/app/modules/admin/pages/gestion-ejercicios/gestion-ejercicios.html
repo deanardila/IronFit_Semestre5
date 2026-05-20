@@ -5,6 +5,7 @@
             <button class="btn-volver" (click)="volver()">← Volver</button>
             <h1>Catálogo de Ejercicios</h1>
         </div>
+
         <div class="ejercicios-header-right">
             <div class="busqueda-container">
                 <input
@@ -12,8 +13,15 @@
                     class="input-busqueda"
                     placeholder="🔍 Buscar por nombre, categoría o grupo muscular..."
                     [(ngModel)]="terminoBusqueda"
-                    (input)="aplicarFiltros()"
+                    (keyup.enter)="aplicarFiltros()"
                 />
+
+                <button
+                    type="button"
+                    class="btn-buscar-ejercicios"
+                    (click)="aplicarFiltros()">
+                    Buscar
+                </button>
             </div>
 
             <button class="btn-crear-ejercicio" (click)="toggleFormularioCrear()">
@@ -102,6 +110,7 @@
                     <th>Acciones</th>
                 </tr>
             </thead>
+
             <tbody>
                 <tr *ngFor="let e of ejerciciosFiltrados">
                     <td>{{ e.id }}</td>
@@ -114,14 +123,62 @@
                     <td>{{ e.tipoEquipo || '—' }}</td>
                     <td>
                         <div class="acciones-ejercicio">
-                            <button type="button" class="btn-actualizar" (click)="editarEjercicio(e)">Editar</button>
-                            <button type="button" class="btn-crear-ejercicio btn-eliminar" (click)="eliminarEjercicio(e.id)">Eliminar</button>
+                            <button
+                                type="button"
+                                class="btn-actualizar"
+                                (click)="editarEjercicio(e)">
+                                Editar
+                            </button>
+
+                            <button
+                                type="button"
+                                class="btn-crear-ejercicio btn-eliminar"
+                                (click)="eliminarEjercicio(e.id)">
+                                Inactivar
+                            </button>
                         </div>
                     </td>
                 </tr>
             </tbody>
         </table>
+
+        <div class="paginacion-ejercicios" *ngIf="totalElementos > 0">
+            <div class="paginacion-info">
+                <span>
+                    Mostrando página {{ paginaActual + 1 }} de {{ totalPaginas || 1 }}
+                </span>
+                <small>
+                    Total ejercicios: {{ totalElementos }}
+                </small>
+            </div>
+
+            <div class="paginacion-controles">
+                <button
+                    type="button"
+                    class="btn-paginacion"
+                    (click)="irPaginaAnterior()"
+                    [disabled]="paginaActual === 0">
+                    ← Anterior
+                </button>
+
+                <select
+                    class="select-paginacion"
+                    [(ngModel)]="tamanoPagina"
+                    (change)="cambiarTamanoPagina()">
+                    <option *ngFor="let opcion of opcionesTamanoPagina" [ngValue]="opcion">
+                        {{ opcion }} por página
+                    </option>
+                </select>
+
+                <button
+                    type="button"
+                    class="btn-paginacion"
+                    (click)="irPaginaSiguiente()"
+                    [disabled]="ultimaPagina || paginaActual >= totalPaginas - 1">
+                    Siguiente →
+                </button>
+            </div>
+        </div>
     </section>
 
 </div>
-

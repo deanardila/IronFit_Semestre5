@@ -11,7 +11,7 @@
         </div>
 
         <div class="dashboard-header-right">
-                    <span class="dashboard-username">Hola, {{ nombreUsuario }}</span>
+                    <p> {{ nombreUsuario }}</p>
             <button class="dashboard-logout-btn" (click)="logout()">
                 Cerrar sesión
             </button>
@@ -21,7 +21,7 @@
     <section class="dashboard-welcome">
     <div>
         <h1>Panel de administración</h1>
-        <p>{{ fechaDashboard }} · Control general de usuarios, planes, asistencias y reportes</p>
+        <span class="dashboard-username">{{ fechaDashboard }} · Control general de usuarios, planes, asistencias y reportes</span>
     </div>
 </section>
 

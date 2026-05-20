@@ -1,5 +1,6 @@
 package com.ironfit.backendmongo.controlador.ejercicios;
 
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
 import com.ironfit.backendmongo.dto.ejercicios.EjercicioActualizarRequest;
 import com.ironfit.backendmongo.dto.ejercicios.EjercicioCrearRequest;
 import com.ironfit.backendmongo.dto.ejercicios.EjercicioResponse;
@@ -25,6 +26,27 @@ public class EjercicioController {
     @GetMapping
     public List<EjercicioResponse> listarEjercicios() {
         return ejercicioService.listarEjercicios();
+    }
+
+    // LISTAR PAGINADO
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR')")
+    @GetMapping("/paginado")
+    public PaginaResponse<EjercicioResponse> listarEjerciciosPaginados(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String grupoMuscular,
+            @RequestParam(required = false) Boolean activo
+    ) {
+        return ejercicioService.listarEjerciciosPaginados(
+                page,
+                size,
+                buscar,
+                categoria,
+                grupoMuscular,
+                activo
+        );
     }
 
     // CREAR

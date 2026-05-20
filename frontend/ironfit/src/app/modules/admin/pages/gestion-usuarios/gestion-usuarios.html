@@ -12,9 +12,16 @@
                 <input 
                     type="text" 
                     class="input-busqueda" 
-                    placeholder="🔍 Buscar por cédula o nombre..."
+                    placeholder="🔍 Buscar por cédula, nombre o correo..."
                     [(ngModel)]="terminoBusqueda"
-                    (input)="aplicarFiltros()">
+                    (keyup.enter)="aplicarFiltros()">
+
+                <button
+                    type="button"
+                    class="btn-buscar-usuarios"
+                    (click)="aplicarFiltros()">
+                    Buscar
+                </button>
             </div>
 
             <div class="usuarios-filtros" *ngIf="filtroTipo || filtroEstado">
@@ -214,8 +221,43 @@
             </tbody>
         </table>
 
+        <div class="paginacion-usuarios" *ngIf="totalElementos > 0">
+            <div class="paginacion-info">
+                <span>
+                    Mostrando página {{ paginaActual + 1 }} de {{ totalPaginas || 1 }}
+                </span>
+                <small>
+                    Total usuarios: {{ totalElementos }}
+                </small>
+            </div>
 
+            <div class="paginacion-controles">
+                <button
+                    type="button"
+                    class="btn-paginacion"
+                    (click)="irPaginaAnterior()"
+                    [disabled]="paginaActual === 0">
+                    ← Anterior
+                </button>
 
+                <select
+                    class="select-paginacion"
+                    [(ngModel)]="tamanoPagina"
+                    (change)="cambiarTamanoPagina()">
+                    <option *ngFor="let opcion of opcionesTamanoPagina" [ngValue]="opcion">
+                        {{ opcion }} por página
+                    </option>
+                </select>
+
+                <button
+                    type="button"
+                    class="btn-paginacion"
+                    (click)="irPaginaSiguiente()"
+                    [disabled]="ultimaPagina || paginaActual >= totalPaginas - 1">
+                    Siguiente →
+                </button>
+            </div>
+        </div>
         <ng-template #noHayUsuarios>
             <p>No hay usuarios que coincidan con los filtros{{ terminoBusqueda ? ' o la búsqueda' : '' }}.</p>
         </ng-template>

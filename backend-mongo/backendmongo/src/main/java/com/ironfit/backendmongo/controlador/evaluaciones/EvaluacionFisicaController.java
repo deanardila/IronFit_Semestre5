@@ -1,5 +1,6 @@
 package com.ironfit.backendmongo.controlador.evaluaciones;
 
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
 import com.ironfit.backendmongo.dto.evaluaciones.EvaluacionFisicaRequest;
 import com.ironfit.backendmongo.dto.evaluaciones.EvaluacionFisicaResponse;
 import com.ironfit.backendmongo.servicio.evaluaciones.EvaluacionFisicaService;
@@ -23,6 +24,22 @@ public class EvaluacionFisicaController {
     @GetMapping
     public List<EvaluacionFisicaResponse> listarEvaluaciones(Authentication authentication) {
         return evaluacionFisicaService.listarEvaluaciones(authentication);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN','ENTRENADOR','CLIENTE')")
+    @GetMapping("/paginado")
+    public PaginaResponse<EvaluacionFisicaResponse> listarEvaluacionesPaginadas(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String buscar
+    ) {
+        return evaluacionFisicaService.listarEvaluacionesPaginadas(
+                authentication,
+                page,
+                size,
+                buscar
+        );
     }
 
     @PreAuthorize("hasRole('CLIENTE')")

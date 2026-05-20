@@ -28,6 +28,15 @@ export interface PlanEntrenamientoCrearDTO {
     entrenadorId: string;
 }
 
+export interface PaginaResponse<T> {
+    contenido: T[];
+    pagina: number;
+    tamano: number;
+    totalElementos: number;
+    totalPaginas: number;
+    ultima: boolean;
+}
+
 export interface PlanResumen {
     idPlan: number;
     nombrePlan: string;
@@ -54,6 +63,31 @@ export class Planes {
 
     getPlanes(): Observable<PlanEntrenamientoDTO[]> {
         return this.http.get<PlanEntrenamientoDTO[]>(this.apiUrl);
+    }
+
+    getPlanesPaginados(
+        page: number,
+        size: number,
+        buscar?: string,
+        activo?: boolean | null
+    ): Observable<PaginaResponse<PlanEntrenamientoDTO>> {
+        const params: any = {
+            page,
+            size
+        };
+
+        if (buscar && buscar.trim()) {
+            params.buscar = buscar.trim();
+        }
+
+        if (activo !== null && activo !== undefined) {
+            params.activo = activo;
+        }
+
+        return this.http.get<PaginaResponse<PlanEntrenamientoDTO>>(
+            `${this.apiUrl}/paginado`,
+            { params }
+        );
     }
 
     getResumenPlanes(): Observable<PlanResumen[]> {

@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, timeout } from 'rxjs/operators';
 
 import { PlanEntrenamientoDTO, Planes } from '../../../admin/planes';
 import { RutinaDTO, RutinaRequest, RutinaService } from '../../../admin/rutina';
@@ -20,6 +20,8 @@ interface PlanRutinasResumen {
   styleUrl: './mis-rutinas.scss',
 })
 export class MisRutinas implements OnInit {
+  private readonly requestTimeoutMs = 15000;
+
   cargando = false;
   guardando = false;
   cambiandoEstadoId: string | null = null;
@@ -39,6 +41,13 @@ export class MisRutinas implements OnInit {
   terminoBusqueda = '';
   filtroEstadoPlan = 'TODOS';
   diaSeleccionado = 'TODOS';
+
+  paginaPlanesActual = 0;
+  tamanoPaginaPlanes = 20;
+  totalPlanes = 0;
+  totalPaginasPlanes = 0;
+  ultimaPaginaPlanes = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
 
   mostrarFormulario = false;
   modoEdicion = false;
@@ -83,8 +92,6 @@ export class MisRutinas implements OnInit {
     this.route.paramMap.subscribe(params => {
       const planId = params.get('planId') || params.get('id');
 
-      console.log('PLAN ID RECIBIDO EN MIS RUTINAS:', planId);
-
       this.planIdSeleccionado = planId;
 
       if (this.planIdSeleccionado) {
@@ -104,60 +111,78 @@ export class MisRutinas implements OnInit {
     this.rutinasFiltradas = [];
     this.cancelarFormulario();
 
-    this.planesService.getPlanes().subscribe({
-      next: (planes) => {
-        const listaPlanes = planes || [];
+    this.planesService.getPlanesPaginados(
+      this.paginaPlanesActual,
+      this.tamanoPaginaPlanes,
+      this.terminoBusqueda,
+      null
+    )
+      .pipe(timeout(this.requestTimeoutMs))
+      .subscribe({
+        next: (respuesta) => {
+          const listaPlanes = respuesta.contenido || [];
 
-        if (listaPlanes.length === 0) {
+          this.totalPlanes = respuesta.totalElementos ?? 0;
+          this.totalPaginasPlanes = respuesta.totalPaginas ?? 0;
+          this.ultimaPaginaPlanes = respuesta.ultima ?? true;
+          this.paginaPlanesActual = respuesta.pagina ?? 0;
+          this.tamanoPaginaPlanes = respuesta.tamano ?? this.tamanoPaginaPlanes;
+
+          if (listaPlanes.length === 0) {
+            this.planesResumen = [];
+            this.planesResumenFiltrados = [];
+            this.cargando = false;
+            this.cdr.detectChanges();
+            return;
+          }
+
+          const consultas = listaPlanes.map(plan =>
+            this.rutinaService.getRutinasPorPlanGestion(plan.id).pipe(
+              catchError((err) => {
+                console.error('Error cargando rutinas del plan', plan.id, err);
+                return of([] as RutinaDTO[]);
+              })
+            )
+          );
+
+          forkJoin(consultas).subscribe({
+            next: (rutinasPorPlan) => {
+              this.planesResumen = listaPlanes.map((plan, index) => {
+                const rutinasPlan = rutinasPorPlan[index] || [];
+                const rutinasActivas = rutinasPlan.filter(r => r.activo).length;
+
+                return {
+                  plan,
+                  totalRutinas: rutinasPlan.length,
+                  rutinasActivas,
+                  estadoRutinas: this.calcularEstadoRutinas(rutinasPlan),
+                };
+              });
+
+              this.aplicarFiltroEstadoPlanesLocal();
+              this.cargando = false;
+              this.cdr.detectChanges();
+            },
+            error: (err) => {
+              console.error('Error armando tablero de rutinas', err);
+              this.error = 'No se pudo cargar el resumen de rutinas.';
+              this.cargando = false;
+              this.cdr.detectChanges();
+            }
+          });
+        },
+        error: (err) => {
+          console.error('Error cargando planes paginados', err);
+          this.error = this.obtenerMensajeError(err, 'No se pudieron cargar tus planes.');
           this.planesResumen = [];
           this.planesResumenFiltrados = [];
+          this.totalPlanes = 0;
+          this.totalPaginasPlanes = 0;
+          this.ultimaPaginaPlanes = true;
           this.cargando = false;
           this.cdr.detectChanges();
-          return;
         }
-
-        const consultas = listaPlanes.map(plan =>
-          this.rutinaService.getRutinasPorPlanGestion(plan.id).pipe(
-            catchError((err) => {
-              console.error('Error cargando rutinas del plan', plan.id, err);
-              return of([] as RutinaDTO[]);
-            })
-          )
-        );
-
-        forkJoin(consultas).subscribe({
-          next: (rutinasPorPlan) => {
-            this.planesResumen = listaPlanes.map((plan, index) => {
-              const rutinasPlan = rutinasPorPlan[index] || [];
-              const rutinasActivas = rutinasPlan.filter(r => r.activo).length;
-
-              return {
-                plan,
-                totalRutinas: rutinasPlan.length,
-                rutinasActivas,
-                estadoRutinas: this.calcularEstadoRutinas(rutinasPlan),
-              };
-            });
-
-            this.aplicarFiltrosPlanes();
-            this.cargando = false;
-            this.cdr.detectChanges();
-          },
-          error: (err) => {
-            console.error('Error armando tablero de rutinas', err);
-            this.error = 'No se pudo cargar el resumen de rutinas.';
-            this.cargando = false;
-            this.cdr.detectChanges();
-          }
-        });
-      },
-      error: (err) => {
-        console.error('Error cargando planes', err);
-        this.error = this.obtenerMensajeError(err, 'No se pudieron cargar tus planes.');
-        this.cargando = false;
-        this.cdr.detectChanges();
-      }
-    });
+      });
   }
 
   cargarGestionPlan(planId: string): void {
@@ -168,64 +193,65 @@ export class MisRutinas implements OnInit {
     this.modoEdicion = false;
     this.rutinaEditandoId = null;
 
-    this.planesService.getPlanes().subscribe({
-      next: (planes) => {
-        const listaPlanes = planes || [];
+    this.planesService.obtenerPlan(planId)
+      .pipe(timeout(this.requestTimeoutMs))
+      .subscribe({
+        next: (plan) => {
+          this.planSeleccionado = plan;
 
-        this.planSeleccionado =
-          listaPlanes.find(plan => plan.id === planId) || null;
-
-        if (!this.planSeleccionado) {
-          this.error = 'No se encontró el plan seleccionado.';
-          this.rutinas = [];
-          this.rutinasFiltradas = [];
-          this.cargando = false;
-          this.cdr.detectChanges();
-          return;
-        }
-
-        this.rutinaService.getRutinasPorPlanGestion(planId).subscribe({
-          next: (rutinas) => {
-            this.rutinas = (rutinas || []).sort(
-              (a, b) => (a.orden || 0) - (b.orden || 0)
-            );
-
-            this.aplicarFiltroDia();
-
-            this.cargando = false;
-            this.cdr.detectChanges();
-          },
-          error: (err) => {
-            console.error('Error cargando rutinas del plan', err);
-
-            this.error = this.obtenerMensajeError(
-              err,
-              'No se pudieron cargar las rutinas del plan.'
-            );
-
+          if (!this.planSeleccionado) {
+            this.error = 'No se encontró el plan seleccionado.';
             this.rutinas = [];
             this.rutinasFiltradas = [];
             this.cargando = false;
             this.cdr.detectChanges();
+            return;
           }
-        });
-      },
-      error: (err) => {
-        console.error('Error cargando planes para buscar plan seleccionado', err);
 
-        this.error = this.obtenerMensajeError(
-          err,
-          'No se pudo cargar el plan seleccionado.'
-        );
+          this.rutinaService.getRutinasPorPlanGestion(planId)
+            .pipe(timeout(this.requestTimeoutMs))
+            .subscribe({
+              next: (rutinas) => {
+                this.rutinas = (rutinas || []).sort(
+                  (a, b) => (a.orden || 0) - (b.orden || 0)
+                );
 
-        this.planSeleccionado = null;
-        this.rutinas = [];
-        this.rutinasFiltradas = [];
-        this.cargando = false;
-        this.cdr.detectChanges();
-      }
-    });
-  } 
+                this.aplicarFiltroDia();
+
+                this.cargando = false;
+                this.cdr.detectChanges();
+              },
+              error: (err) => {
+                console.error('Error cargando rutinas del plan', err);
+
+                this.error = this.obtenerMensajeError(
+                  err,
+                  'No se pudieron cargar las rutinas del plan.'
+                );
+
+                this.rutinas = [];
+                this.rutinasFiltradas = [];
+                this.cargando = false;
+                this.cdr.detectChanges();
+              }
+            });
+        },
+        error: (err) => {
+          console.error('Error cargando plan seleccionado', err);
+
+          this.error = this.obtenerMensajeError(
+            err,
+            'No se pudo cargar el plan seleccionado.'
+          );
+
+          this.planSeleccionado = null;
+          this.rutinas = [];
+          this.rutinasFiltradas = [];
+          this.cargando = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
 
   calcularEstadoRutinas(rutinas: RutinaDTO[]): 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETO' {
     const activas = rutinas.filter(r => r.activo).length;
@@ -242,28 +268,43 @@ export class MisRutinas implements OnInit {
   }
 
   aplicarFiltrosPlanes(): void {
-    const termino = this.normalizarTexto(this.terminoBusqueda);
+    this.paginaPlanesActual = 0;
+    this.cargarTableroPlanes();
+  }
 
+  aplicarFiltroEstadoPlanesLocal(): void {
     this.planesResumenFiltrados = this.planesResumen.filter(item => {
-      const plan = item.plan;
-
-      const coincideTexto =
-        !termino ||
-        this.normalizarTexto(plan.nombre).includes(termino) ||
-        this.normalizarTexto(plan.objetivo).includes(termino) ||
-        this.normalizarTexto(plan.clienteNombre || plan.clienteId).includes(termino);
-
-      const coincideEstado =
-        this.filtroEstadoPlan === 'TODOS' ||
+      return this.filtroEstadoPlan === 'TODOS' ||
         item.estadoRutinas === this.filtroEstadoPlan;
-
-      return coincideTexto && coincideEstado;
     });
   }
 
   seleccionarFiltroPlan(filtro: string): void {
     this.filtroEstadoPlan = filtro;
-    this.aplicarFiltrosPlanes();
+    this.aplicarFiltroEstadoPlanesLocal();
+  }
+
+  irPaginaPlanesAnterior(): void {
+    if (this.paginaPlanesActual <= 0) {
+      return;
+    }
+
+    this.paginaPlanesActual--;
+    this.cargarTableroPlanes();
+  }
+
+  irPaginaPlanesSiguiente(): void {
+    if (this.ultimaPaginaPlanes || this.paginaPlanesActual >= this.totalPaginasPlanes - 1) {
+      return;
+    }
+
+    this.paginaPlanesActual++;
+    this.cargarTableroPlanes();
+  }
+
+  cambiarTamanoPaginaPlanes(): void {
+    this.paginaPlanesActual = 0;
+    this.cargarTableroPlanes();
   }
 
   seleccionarDia(dia: string): void {
@@ -326,6 +367,8 @@ export class MisRutinas implements OnInit {
       orden: rutina.orden || 1,
       activo: rutina.activo,
     };
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   guardarRutina(): void {
@@ -339,38 +382,42 @@ export class MisRutinas implements OnInit {
     this.guardando = true;
 
     if (this.modoEdicion && this.rutinaEditandoId) {
-      this.rutinaService.actualizarRutina(this.rutinaEditandoId, this.formulario).subscribe({
+      this.rutinaService.actualizarRutina(this.rutinaEditandoId, this.formulario)
+        .pipe(timeout(this.requestTimeoutMs))
+        .subscribe({
+          next: () => {
+            this.mensajeExito = 'Rutina actualizada correctamente.';
+            this.guardando = false;
+            this.cancelarFormulario();
+            this.recargarVistaActual();
+          },
+          error: (err) => {
+            console.error('Error actualizando rutina', err);
+            this.error = this.obtenerMensajeError(err, 'No se pudo actualizar la rutina.');
+            this.guardando = false;
+            this.cdr.detectChanges();
+          }
+        });
+
+      return;
+    }
+
+    this.rutinaService.crearRutina(this.formulario)
+      .pipe(timeout(this.requestTimeoutMs))
+      .subscribe({
         next: () => {
-          this.mensajeExito = 'Rutina actualizada correctamente.';
+          this.mensajeExito = 'Rutina creada correctamente.';
           this.guardando = false;
           this.cancelarFormulario();
           this.recargarVistaActual();
         },
         error: (err) => {
-          console.error('Error actualizando rutina', err);
-          this.error = this.obtenerMensajeError(err, 'No se pudo actualizar la rutina.');
+          console.error('Error creando rutina', err);
+          this.error = this.obtenerMensajeError(err, 'No se pudo crear la rutina.');
           this.guardando = false;
           this.cdr.detectChanges();
         }
       });
-
-      return;
-    }
-
-    this.rutinaService.crearRutina(this.formulario).subscribe({
-      next: () => {
-        this.mensajeExito = 'Rutina creada correctamente.';
-        this.guardando = false;
-        this.cancelarFormulario();
-        this.recargarVistaActual();
-      },
-      error: (err) => {
-        console.error('Error creando rutina', err);
-        this.error = this.obtenerMensajeError(err, 'No se pudo crear la rutina.');
-        this.guardando = false;
-        this.cdr.detectChanges();
-      }
-    });
   }
 
   cambiarEstadoRutina(rutina: RutinaDTO): void {
@@ -380,22 +427,24 @@ export class MisRutinas implements OnInit {
 
     const nuevoEstado = !rutina.activo;
 
-    this.rutinaService.cambiarEstadoRutina(rutina.id, nuevoEstado).subscribe({
-      next: () => {
-        this.mensajeExito = nuevoEstado
-          ? 'Rutina activada correctamente.'
-          : 'Rutina inactivada correctamente.';
+    this.rutinaService.cambiarEstadoRutina(rutina.id, nuevoEstado)
+      .pipe(timeout(this.requestTimeoutMs))
+      .subscribe({
+        next: () => {
+          this.mensajeExito = nuevoEstado
+            ? 'Rutina activada correctamente.'
+            : 'Rutina inactivada correctamente.';
 
-        this.cambiandoEstadoId = null;
-        this.recargarVistaActual();
-      },
-      error: (err) => {
-        console.error('Error cambiando estado de rutina', err);
-        this.error = this.obtenerMensajeError(err, 'No se pudo cambiar el estado de la rutina.');
-        this.cambiandoEstadoId = null;
-        this.cdr.detectChanges();
-      }
-    });
+          this.cambiandoEstadoId = null;
+          this.recargarVistaActual();
+        },
+        error: (err) => {
+          console.error('Error cambiando estado de rutina', err);
+          this.error = this.obtenerMensajeError(err, 'No se pudo cambiar el estado de la rutina.');
+          this.cambiandoEstadoId = null;
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   irAEjercicios(rutina: RutinaDTO): void {
@@ -407,7 +456,7 @@ export class MisRutinas implements OnInit {
 
     this.router.navigate(['/entrenador/RutinaEjercicios', rutina.id]);
   }
-  
+
   cancelarFormulario(): void {
     this.mostrarFormulario = false;
     this.modoEdicion = false;

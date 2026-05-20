@@ -30,6 +30,13 @@ export class AuditoriaReportes implements OnInit {
   fechaInicio = '';
   fechaFin = '';
 
+  paginaActual = 0;
+  tamanoPagina = 20;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
+
   totalRegistros = 0;
   totalAsistio = 0;
   totalNoAsistio = 0;
@@ -52,12 +59,17 @@ export class AuditoriaReportes implements OnInit {
     this.cdr.detectChanges();
 
     const filtros: FiltrosAsistencia = {
+      buscar: this.terminoBusqueda || undefined,
       fechaInicio: this.fechaInicio || undefined,
       fechaFin: this.fechaFin || undefined,
       estado: this.filtroEstado !== 'TODOS' ? this.filtroEstado : undefined,
     };
 
-    this.asistenciaService.obtenerReporteAsistencias(filtros)
+    this.asistenciaService.obtenerReporteAsistenciasPaginado(
+      this.paginaActual,
+      this.tamanoPagina,
+      filtros
+    )
       .pipe(
         timeout(15000),
         finalize(() => {
@@ -66,49 +78,66 @@ export class AuditoriaReportes implements OnInit {
         })
       )
       .subscribe({
-        next: (data) => {
-          console.log('Reportes de asistencia recibidos:', data);
+        next: (respuesta) => {
+          this.resumenes = respuesta.contenido ?? [];
+          this.resumenesFiltrados = this.resumenes;
 
-          this.resumenes = Array.isArray(data) ? data : [];
-          this.aplicarFiltros();
+          this.totalElementos = respuesta.totalElementos ?? 0;
+          this.totalPaginas = respuesta.totalPaginas ?? 0;
+          this.ultimaPagina = respuesta.ultima ?? true;
+          this.paginaActual = respuesta.pagina ?? 0;
+          this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
+
+          this.calcularMetricas();
+          this.cdr.detectChanges();
         },
         error: (err) => {
-          console.error('Error cargando reportes de asistencia', err);
+          console.error('Error cargando reportes de asistencia paginados', err);
 
           this.error = 'Ocurrió un error al cargar las asistencias.';
           this.resumenes = [];
           this.resumenesFiltrados = [];
+
+          this.totalElementos = 0;
+          this.totalPaginas = 0;
+          this.ultimaPagina = true;
+
           this.calcularMetricas();
+          this.cdr.detectChanges();
         }
       });
   }
 
   aplicarFiltros(): void {
-    const b = this.normalizarTexto(this.terminoBusqueda);
+    this.paginaActual = 0;
+    this.cargarResumen();
+  }
 
-    this.resumenesFiltrados = this.resumenes.filter(r => {
-      const coincideBusqueda =
-        !b ||
-        this.normalizarTexto(r.clienteNombre).includes(b) ||
-        this.normalizarTexto(r.clienteDocumento).includes(b) ||
-        this.normalizarTexto(r.entrenadorNombre).includes(b) ||
-        this.normalizarTexto(r.planNombre).includes(b) ||
-        this.normalizarTexto(r.rutinaNombre).includes(b) ||
-        this.normalizarTexto(r.estadoAsistencia).includes(b) ||
-        this.normalizarTexto(r.observaciones).includes(b);
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
+      return;
+    }
 
-      const coincideEstado =
-        this.filtroEstado === 'TODOS' ||
-        this.normalizarEstado(r.estadoAsistencia) === this.filtroEstado;
+    this.paginaActual--;
+    this.cargarResumen();
+  }
 
-      return coincideBusqueda && coincideEstado;
-    });
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
 
-    this.calcularMetricas();
+    this.paginaActual++;
+    this.cargarResumen();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarResumen();
   }
 
   calcularMetricas(): void {
-    this.totalRegistros = this.resumenesFiltrados.length;
+    this.totalRegistros = this.totalElementos || this.resumenesFiltrados.length;
 
     this.totalAsistio = this.resumenesFiltrados.filter(r =>
       this.normalizarEstado(r.estadoAsistencia) === 'ASISTIO'
@@ -122,8 +151,10 @@ export class AuditoriaReportes implements OnInit {
       this.normalizarEstado(r.estadoAsistencia) === 'ASISTIO_SIN_RUTINA'
     ).length;
 
-    this.porcentajeAsistencia = this.totalRegistros > 0
-      ? Math.round((this.totalAsistio / this.totalRegistros) * 100)
+    const registrosPagina = this.resumenesFiltrados.length;
+
+    this.porcentajeAsistencia = registrosPagina > 0
+      ? Math.round((this.totalAsistio / registrosPagina) * 100)
       : 0;
   }
 
@@ -165,6 +196,12 @@ export class AuditoriaReportes implements OnInit {
     this.filtroEstado = 'TODOS';
     this.fechaInicio = '';
     this.fechaFin = '';
+    this.paginaActual = 0;
+    this.cargarResumen();
+  }
+
+  actualizar(): void {
+    this.paginaActual = 0;
     this.cargarResumen();
   }
 
@@ -194,11 +231,10 @@ export class AuditoriaReportes implements OnInit {
 
     doc.text(rango, 14, 28);
 
-    doc.text(`Total registros: ${this.totalRegistros}`, 14, 36);
-    doc.text(`Asistieron: ${this.totalAsistio}`, 60, 36);
-    doc.text(`No asistieron: ${this.totalNoAsistio}`, 100, 36);
-    doc.text(`Asistió sin rutina: ${this.totalSinRutina}`, 145, 36);
-    doc.text(`Cumplimiento: ${this.porcentajeAsistencia}%`, 200, 36);
+    doc.text(`Página exportada: ${this.paginaActual + 1} de ${this.totalPaginas || 1}`, 14, 36);
+    doc.text(`Total general: ${this.totalElementos}`, 70, 36);
+    doc.text(`Registros en página: ${this.resumenesFiltrados.length}`, 120, 36);
+    doc.text(`Cumplimiento página: ${this.porcentajeAsistencia}%`, 190, 36);
 
     const filas = this.resumenesFiltrados.map(r => [
       r.fechaAsistencia || '-',
@@ -238,10 +274,6 @@ export class AuditoriaReportes implements OnInit {
     });
 
     doc.save('reporte-asistencias-ironfit.pdf');
-  }
-
-  actualizar(): void {
-    this.cargarResumen();
   }
 
   volverAlDashboard(): void {

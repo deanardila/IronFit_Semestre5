@@ -17,7 +17,14 @@
           class="input-busqueda"
           placeholder="🔍 Buscar cliente, entrenador, plan o rutina..."
           [(ngModel)]="terminoBusqueda"
-          (input)="aplicarFiltros()">
+          (keyup.enter)="aplicarFiltros()">
+
+        <button
+          type="button"
+          class="btn-buscar-reportes"
+          (click)="aplicarFiltros()">
+          Buscar
+        </button>
       </div>
 
       <input
@@ -71,25 +78,25 @@
     <article class="metrica-card ok">
       <span>Asistieron</span>
       <strong>{{ totalAsistio }}</strong>
-      <small>sesiones cumplidas</small>
+      <small>en esta página</small>
     </article>
 
     <article class="metrica-card danger">
       <span>No asistieron</span>
       <strong>{{ totalNoAsistio }}</strong>
-      <small>faltas registradas</small>
+      <small>en esta página</small>
     </article>
 
     <article class="metrica-card warning">
       <span>Sin rutina</span>
       <strong>{{ totalSinRutina }}</strong>
-      <small>asistencias parciales</small>
+      <small>en esta página</small>
     </article>
 
     <article class="metrica-card main">
       <span>Cumplimiento</span>
       <strong>{{ porcentajeAsistencia }}%</strong>
-      <small>según filtro actual</small>
+      <small>según página actual</small>
     </article>
   </section>
 
@@ -137,6 +144,44 @@
         </tr>
       </tbody>
     </table>
+
+    <div class="paginacion-reportes" *ngIf="totalElementos > 0">
+      <div class="paginacion-info">
+        <span>
+          Mostrando página {{ paginaActual + 1 }} de {{ totalPaginas || 1 }}
+        </span>
+        <small>
+          Total reportes: {{ totalElementos }}
+        </small>
+      </div>
+
+      <div class="paginacion-controles">
+        <button
+          type="button"
+          class="btn-paginacion"
+          (click)="irPaginaAnterior()"
+          [disabled]="paginaActual === 0">
+          ← Anterior
+        </button>
+
+        <select
+          class="select-paginacion"
+          [(ngModel)]="tamanoPagina"
+          (change)="cambiarTamanoPagina()">
+          <option *ngFor="let opcion of opcionesTamanoPagina" [ngValue]="opcion">
+            {{ opcion }} por página
+          </option>
+        </select>
+
+        <button
+          type="button"
+          class="btn-paginacion"
+          (click)="irPaginaSiguiente()"
+          [disabled]="ultimaPagina || paginaActual >= totalPaginas - 1">
+          Siguiente →
+        </button>
+      </div>
+    </div>
   </section>
 
 </div>

@@ -28,14 +28,21 @@ export class PlanesRutinas implements OnInit {
 
   showingRutinas = false;
 
+  paginaActual = 0;
+  tamanoPagina = 20;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
+
   totalPlanes = 0;
   totalActivos = 0;
   totalInactivos = 0;
   clientesConPlan = 0;
   entrenadoresConPlan = 0;
 
-resumenPorEntrenador: { etiqueta: string; total: number; porcentaje: number }[] = [];
-resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = [];
+  resumenPorEntrenador: { etiqueta: string; total: number; porcentaje: number }[] = [];
+  resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = [];
 
   constructor(
     private planesApi: Planes,
@@ -57,19 +64,37 @@ resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = 
     this.rutinasFiltradas = [];
     this.cdr.detectChanges();
 
-    this.planesApi.getPlanes().subscribe({
-      next: (lista) => {
-        this.planes = lista || [];
-        this.aplicarFiltrosPlanes();
+    const activoFiltro = this.obtenerActivoFiltro();
+
+    this.planesApi.getPlanesPaginados(
+      this.paginaActual,
+      this.tamanoPagina,
+      this.terminoBusqueda,
+      activoFiltro
+    ).subscribe({
+      next: (respuesta) => {
+        this.planes = respuesta.contenido || [];
+        this.planesFiltrados = this.planes;
+
+        this.totalElementos = respuesta.totalElementos ?? 0;
+        this.totalPaginas = respuesta.totalPaginas ?? 0;
+        this.ultimaPagina = respuesta.ultima ?? true;
+        this.paginaActual = respuesta.pagina ?? 0;
+        this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
+
         this.calcularMetricas();
+
         this.cargando = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('Error cargando planes', err);
+        console.error('Error cargando planes paginados', err);
         this.error = 'Ocurrió un error al cargar los planes de entrenamiento.';
         this.planes = [];
         this.planesFiltrados = [];
+        this.totalElementos = 0;
+        this.totalPaginas = 0;
+        this.ultimaPagina = true;
         this.calcularMetricas();
         this.cargando = false;
         this.cdr.detectChanges();
@@ -109,25 +134,8 @@ resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = 
   }
 
   aplicarFiltrosPlanes(): void {
-    const busqueda = this.normalizarTexto(this.terminoBusqueda);
-
-    this.planesFiltrados = this.planes.filter(plan => {
-      const coincideBusqueda =
-        !busqueda ||
-        this.normalizarTexto(plan.nombre).includes(busqueda) ||
-        this.normalizarTexto(plan.objetivo).includes(busqueda) ||
-        this.normalizarTexto(plan.clienteNombre).includes(busqueda) ||
-        this.normalizarTexto(plan.entrenadorNombre).includes(busqueda);
-
-      const coincideEstado =
-        this.filtroEstado === 'TODOS' ||
-        (this.filtroEstado === 'ACTIVO' && plan.activo) ||
-        (this.filtroEstado === 'INACTIVO' && !plan.activo);
-
-      return coincideBusqueda && coincideEstado;
-    });
-
-    this.calcularMetricas();
+    this.paginaActual = 0;
+    this.cargarPlanes();
   }
 
   aplicarFiltrosRutinas(): void {
@@ -141,10 +149,45 @@ resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = 
     });
   }
 
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
+      return;
+    }
+
+    this.paginaActual--;
+    this.cargarPlanes();
+  }
+
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
+
+    this.paginaActual++;
+    this.cargarPlanes();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarPlanes();
+  }
+
+  obtenerActivoFiltro(): boolean | null {
+    if (this.filtroEstado === 'ACTIVO') {
+      return true;
+    }
+
+    if (this.filtroEstado === 'INACTIVO') {
+      return false;
+    }
+
+    return null;
+  }
+
   calcularMetricas(): void {
     const base = this.planesFiltrados.length ? this.planesFiltrados : this.planes;
 
-    this.totalPlanes = base.length;
+    this.totalPlanes = this.totalElementos || base.length;
     this.totalActivos = base.filter(p => p.activo).length;
     this.totalInactivos = base.filter(p => !p.activo).length;
 
@@ -172,27 +215,27 @@ resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = 
   }
 
   construirResumenPorCampo(
-  planes: PlanEntrenamientoDTO[],
-  selector: (plan: PlanEntrenamientoDTO) => string
-): { etiqueta: string; total: number; porcentaje: number }[] {
-  const mapa = new Map<string, number>();
+    planes: PlanEntrenamientoDTO[],
+    selector: (plan: PlanEntrenamientoDTO) => string
+  ): { etiqueta: string; total: number; porcentaje: number }[] {
+    const mapa = new Map<string, number>();
 
-  planes.forEach(plan => {
-    const clave = selector(plan) || 'Sin dato';
-    mapa.set(clave, (mapa.get(clave) || 0) + 1);
-  });
+    planes.forEach(plan => {
+      const clave = selector(plan) || 'Sin dato';
+      mapa.set(clave, (mapa.get(clave) || 0) + 1);
+    });
 
-  const total = planes.length || 1;
+    const total = planes.length || 1;
 
-  return Array.from(mapa.entries())
-    .map(([clave, cantidad]) => ({
-      etiqueta: clave,
-      total: cantidad,
-      porcentaje: Math.round((cantidad / total) * 100)
-    }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 4);
-}
+    return Array.from(mapa.entries())
+      .map(([clave, cantidad]) => ({
+        etiqueta: clave,
+        total: cantidad,
+        porcentaje: Math.round((cantidad / total) * 100)
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 4);
+  }
 
   volverAListaPlanes(): void {
     this.showingRutinas = false;
@@ -200,8 +243,7 @@ resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = 
     this.rutinas = [];
     this.rutinasFiltradas = [];
     this.terminoBusqueda = '';
-    this.aplicarFiltrosPlanes();
-    this.cdr.detectChanges();
+    this.cargarPlanes();
   }
 
   actualizar(): void {
@@ -210,6 +252,7 @@ resumenPorObjetivo: { etiqueta: string; total: number; porcentaje: number }[] = 
       return;
     }
 
+    this.paginaActual = 0;
     this.cargarPlanes();
   }
 

@@ -2,6 +2,7 @@ package com.ironfit.backendmongo.controlador.asignaciones;
 
 import com.ironfit.backendmongo.dto.asignaciones.AsignacionEntrenadorClienteRequest;
 import com.ironfit.backendmongo.dto.asignaciones.AsignacionEntrenadorClienteResponse;
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
 import com.ironfit.backendmongo.servicio.asignaciones.AsignacionEntrenadorClienteService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -29,6 +30,22 @@ public class AsignacionEntrenadorClienteController {
     @GetMapping("/mis-clientes")
     public List<AsignacionEntrenadorClienteResponse> listarMisClientes(Authentication authentication) {
         return asignacionService.listarMisClientes(authentication);
+    }
+
+    @PreAuthorize("hasRole('ENTRENADOR')")
+    @GetMapping("/mis-clientes/paginado")
+    public PaginaResponse<AsignacionEntrenadorClienteResponse> listarMisClientesPaginado(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String buscar
+    ) {
+        return asignacionService.listarMisClientesPaginado(
+                authentication,
+                page,
+                size,
+                buscar
+        );
     }
 
     @PreAuthorize("hasRole('ADMIN')")

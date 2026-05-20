@@ -2,15 +2,23 @@ package com.ironfit.backendmongo.servicio.asignaciones;
 
 import com.ironfit.backendmongo.dto.asignaciones.AsignacionEntrenadorClienteRequest;
 import com.ironfit.backendmongo.dto.asignaciones.AsignacionEntrenadorClienteResponse;
+import com.ironfit.backendmongo.dto.comun.PaginaResponse;
 import com.ironfit.backendmongo.modelo.asignaciones.AsignacionEntrenadorCliente;
 import com.ironfit.backendmongo.modelo.seguridad.RoleName;
 import com.ironfit.backendmongo.modelo.seguridad.UserDocument;
 import com.ironfit.backendmongo.repositorio.asignaciones.AsignacionEntrenadorClienteRepository;
 import com.ironfit.backendmongo.repositorio.seguridad.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -18,13 +26,16 @@ public class AsignacionEntrenadorClienteService {
 
     private final AsignacionEntrenadorClienteRepository asignacionRepository;
     private final UserRepository userRepository;
+    private final MongoTemplate mongoTemplate;
 
     public AsignacionEntrenadorClienteService(
             AsignacionEntrenadorClienteRepository asignacionRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            MongoTemplate mongoTemplate
     ) {
         this.asignacionRepository = asignacionRepository;
         this.userRepository = userRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     public List<AsignacionEntrenadorClienteResponse> listarAsignaciones() {
@@ -43,6 +54,71 @@ public class AsignacionEntrenadorClienteService {
                 .stream()
                 .map(this::convertirAResponse)
                 .toList();
+    }
+
+    public PaginaResponse<AsignacionEntrenadorClienteResponse> listarMisClientesPaginado(
+            Authentication authentication,
+            int page,
+            int size,
+            String buscar
+    ) {
+        UserDocument usuarioActual = obtenerUsuarioAutenticado(authentication);
+
+        validarRol(usuarioActual, RoleName.ENTRENADOR, "Solo el entrenador puede consultar sus clientes asignados");
+
+        int paginaActual = Math.max(page, 0);
+        int tamanoPagina = size <= 0 ? 20 : Math.min(size, 100);
+
+        Pageable pageable = PageRequest.of(
+                paginaActual,
+                tamanoPagina,
+                Sort.by(Sort.Direction.DESC, "fechaAsignacion")
+        );
+
+        Query query = new Query();
+        ArrayList<Criteria> criterios = new ArrayList<>();
+
+        criterios.add(Criteria.where("entrenadorId").is(usuarioActual.getId()));
+        criterios.add(Criteria.where("activo").is(true));
+
+        if (buscar != null && !buscar.trim().isEmpty()) {
+            List<String> clientesCoincidentes = buscarIdsClientesPorTexto(buscar);
+
+            criterios.add(
+                    Criteria.where("clienteId").in(
+                            clientesCoincidentes.isEmpty()
+                                    ? List.of("__sin_resultados__")
+                                    : clientesCoincidentes
+                    )
+            );
+        }
+
+        query.addCriteria(new Criteria().andOperator(criterios.toArray(new Criteria[0])));
+
+        long totalElementos = mongoTemplate.count(query, AsignacionEntrenadorCliente.class);
+
+        query.with(pageable);
+
+        List<AsignacionEntrenadorClienteResponse> contenido = mongoTemplate
+                .find(query, AsignacionEntrenadorCliente.class)
+                .stream()
+                .map(this::convertirAResponse)
+                .toList();
+
+        int totalPaginas = totalElementos == 0
+                ? 0
+                : (int) Math.ceil((double) totalElementos / tamanoPagina);
+
+        boolean ultima = totalPaginas == 0 || paginaActual >= totalPaginas - 1;
+
+        return new PaginaResponse<>(
+                contenido,
+                paginaActual,
+                tamanoPagina,
+                totalElementos,
+                totalPaginas,
+                ultima
+        );
     }
 
     public AsignacionEntrenadorClienteResponse crearAsignacion(AsignacionEntrenadorClienteRequest request) {
@@ -98,6 +174,34 @@ public class AsignacionEntrenadorClienteService {
 
     public boolean clienteAsignadoAEntrenador(String clienteId, String entrenadorId) {
         return asignacionRepository.existsByClienteIdAndEntrenadorIdAndActivoTrue(clienteId, entrenadorId);
+    }
+
+    private List<String> buscarIdsClientesPorTexto(String texto) {
+        if (texto == null || texto.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String busqueda = texto.trim();
+
+        Query query = new Query();
+
+        query.addCriteria(new Criteria().andOperator(
+                Criteria.where("roles").in(RoleName.CLIENTE),
+                Criteria.where("activo").is(true),
+                new Criteria().orOperator(
+                        Criteria.where("nombres").regex(busqueda, "i"),
+                        Criteria.where("apellidos").regex(busqueda, "i"),
+                        Criteria.where("correo").regex(busqueda, "i"),
+                        Criteria.where("numDoc").regex(busqueda, "i")
+                )
+        ));
+
+        query.limit(300);
+
+        return mongoTemplate.find(query, UserDocument.class)
+                .stream()
+                .map(UserDocument::getId)
+                .toList();
     }
 
     private void validarRequest(AsignacionEntrenadorClienteRequest request) {

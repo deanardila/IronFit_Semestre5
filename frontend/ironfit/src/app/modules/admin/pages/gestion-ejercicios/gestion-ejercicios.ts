@@ -15,7 +15,16 @@ export class GestionEjercicios implements OnInit {
   cargando = false;
   error: string | null = null;
   private timeoutCargaId: ReturnType<typeof setTimeout> | null = null;
+
   terminoBusqueda = '';
+
+  paginaActual = 0;
+  tamanoPagina = 20;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
+
   mostrarFormularioCrear = false;
 
   modoEdicion = false;
@@ -47,7 +56,6 @@ export class GestionEjercicios implements OnInit {
     this.error = null;
     this.cdr.detectChanges();
 
-    // Respaldo visual para evitar estado de carga infinito.
     this.timeoutCargaId = setTimeout(() => {
       if (!this.cargando) {
         return;
@@ -58,7 +66,14 @@ export class GestionEjercicios implements OnInit {
       this.cdr.detectChanges();
     }, 12000);
 
-    this.ejerciciosService.getEjercicios().pipe(
+    this.ejerciciosService.getEjerciciosPaginados(
+      this.paginaActual,
+      this.tamanoPagina,
+      this.terminoBusqueda,
+      null,
+      null,
+      true
+    ).pipe(
       timeout(10000),
       finalize(() => {
         this.cargando = false;
@@ -66,13 +81,21 @@ export class GestionEjercicios implements OnInit {
         this.cdr.detectChanges();
       })
     ).subscribe({
-      next: (data) => {
-        this.ejercicios = this.normalizarListaEjercicios(data);
-        this.aplicarFiltros();
+      next: (respuesta) => {
+        this.ejercicios = respuesta.contenido ?? [];
+        this.ejerciciosFiltrados = this.ejercicios;
+
+        this.totalElementos = respuesta.totalElementos ?? 0;
+        this.totalPaginas = respuesta.totalPaginas ?? 0;
+        this.ultimaPagina = respuesta.ultima ?? true;
+        this.paginaActual = respuesta.pagina ?? 0;
+        this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
+
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('Error cargando ejercicios', err);
+        console.error('Error cargando ejercicios paginados', err);
+
         const status = err?.status;
         const backendMessage = err?.error?.message || err?.message;
 
@@ -86,64 +109,42 @@ export class GestionEjercicios implements OnInit {
 
         this.ejercicios = [];
         this.ejerciciosFiltrados = [];
+
+        this.totalElementos = 0;
+        this.totalPaginas = 0;
+        this.ultimaPagina = true;
+
         this.cdr.detectChanges();
       },
     });
   }
 
   aplicarFiltros(): void {
-    const busqueda = this.terminoBusqueda.trim().toLowerCase();
+    this.paginaActual = 0;
+    this.cargarEjercicios();
+  }
 
-    if (!busqueda) {
-      this.ejerciciosFiltrados = [...this.ejercicios];
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
       return;
     }
 
-    this.ejerciciosFiltrados = this.ejercicios.filter((e) => {
-      const nombre = (e.nombre || '').toLowerCase();
-      const categoria = (e.categoria || '').toLowerCase();
-      const grupoMuscular = (e.grupoMuscular || '').toLowerCase();
-      const descripcion = (e.descripcion || '').toLowerCase();
-
-      return nombre.includes(busqueda)
-        || categoria.includes(busqueda)
-        || grupoMuscular.includes(busqueda)
-        || descripcion.includes(busqueda);
-    });
+    this.paginaActual--;
+    this.cargarEjercicios();
   }
 
-  private normalizarListaEjercicios(data: unknown): EjercicioDTO[] {
-    if (Array.isArray(data)) {
-      return data;
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
     }
 
-    if (!data || typeof data !== 'object') {
-      return [];
-    }
+    this.paginaActual++;
+    this.cargarEjercicios();
+  }
 
-    const wrapper = data as {
-      data?: unknown;
-      content?: unknown;
-      ejercicios?: unknown;
-      results?: unknown;
-      items?: unknown;
-    };
-
-    const posiblesListas = [
-      wrapper.data,
-      wrapper.content,
-      wrapper.ejercicios,
-      wrapper.results,
-      wrapper.items,
-    ];
-
-    for (const lista of posiblesListas) {
-      if (Array.isArray(lista)) {
-        return lista as EjercicioDTO[];
-      }
-    }
-
-    return [];
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarEjercicios();
   }
 
   private cancelarTimeoutCarga(): void {
@@ -162,6 +163,7 @@ export class GestionEjercicios implements OnInit {
       this.ejerciciosService.actualizarEjercicio(this.idEjercicioEditando, this.formulario).subscribe({
         next: () => {
           this.resetFormulario();
+          this.paginaActual = 0;
           this.cargarEjercicios();
           this.mostrarFormularioCrear = false;
         },
@@ -176,6 +178,7 @@ export class GestionEjercicios implements OnInit {
     this.ejerciciosService.crearEjercicio(this.formulario).subscribe({
       next: () => {
         this.resetFormulario();
+        this.paginaActual = 0;
         this.cargarEjercicios();
         this.mostrarFormularioCrear = false;
       },
@@ -203,7 +206,7 @@ export class GestionEjercicios implements OnInit {
   }
 
   eliminarEjercicio(id: string): void {
-    const confirmar = window.confirm('¿Seguro que deseas eliminar este ejercicio?');
+    const confirmar = window.confirm('¿Seguro que deseas inactivar este ejercicio?');
     if (!confirmar) return;
 
     this.ejerciciosService.eliminarEjercicio(id).subscribe({
@@ -211,11 +214,12 @@ export class GestionEjercicios implements OnInit {
         if (this.idEjercicioEditando === id) {
           this.resetFormulario();
         }
+
         this.cargarEjercicios();
       },
       error: (err) => {
-        console.error('Error eliminando ejercicio', err);
-        this.error = err?.error?.message || 'No se pudo eliminar el ejercicio.';
+        console.error('Error inactivando ejercicio', err);
+        this.error = err?.error?.message || 'No se pudo inactivar el ejercicio.';
       }
     });
   }
@@ -261,6 +265,7 @@ export class GestionEjercicios implements OnInit {
   }
 
   actualizar(): void {
+    this.paginaActual = 0;
     this.cargarEjercicios();
   }
 

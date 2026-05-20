@@ -41,6 +41,13 @@ export class Evaluaciones implements OnInit {
   terminoBusqueda = '';
   terminoBusquedaCliente = '';
 
+  paginaActual = 0;
+  tamanoPagina = 20;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+  opcionesTamanoPagina = [10, 20, 50, 100];
+
   mostrarFormulario = false;
   modoEdicion = false;
   idEvaluacionEditando: string | null = null;
@@ -59,7 +66,6 @@ export class Evaluaciones implements OnInit {
   }
 
   cargarDatos(): void {
-    this.cargando = true;
     this.error = '';
     this.mensajeExito = '';
 
@@ -71,20 +77,37 @@ export class Evaluaciones implements OnInit {
     this.cargando = true;
     this.error = '';
 
-    this.evaluacionesService.listarEvaluaciones()
+    this.evaluacionesService.listarEvaluacionesPaginadas(
+      this.paginaActual,
+      this.tamanoPagina,
+      this.terminoBusqueda
+    )
       .pipe(timeout(this.requestTimeoutMs))
       .subscribe({
-        next: (data) => {
-          this.evaluaciones = Array.isArray(data) ? data : [];
-          this.aplicarFiltros();
+        next: (respuesta) => {
+          this.evaluaciones = respuesta.contenido || [];
+          this.evaluacionesFiltradas = this.evaluaciones;
+
+          this.totalElementos = respuesta.totalElementos ?? 0;
+          this.totalPaginas = respuesta.totalPaginas ?? 0;
+          this.ultimaPagina = respuesta.ultima ?? true;
+          this.paginaActual = respuesta.pagina ?? 0;
+          this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
+
           this.cargando = false;
           this.cdr.detectChanges();
         },
         error: (err) => {
-          console.error('Error cargando evaluaciones físicas', err);
+          console.error('Error cargando evaluaciones físicas paginadas', err);
+
           this.error = this.obtenerMensajeError(err, 'No se pudieron cargar las evaluaciones físicas.');
           this.evaluaciones = [];
           this.evaluacionesFiltradas = [];
+
+          this.totalElementos = 0;
+          this.totalPaginas = 0;
+          this.ultimaPagina = true;
+
           this.cargando = false;
           this.cdr.detectChanges();
         }
@@ -94,18 +117,15 @@ export class Evaluaciones implements OnInit {
   cargarClientesAsignados(): void {
     this.cargandoClientes = true;
 
-    this.asignacionesService.listarMisClientes()
+    this.asignacionesService.listarMisClientesPaginado(0, 100, '')
       .pipe(timeout(this.requestTimeoutMs))
       .subscribe({
-        next: (asignaciones: AsignacionEntrenadorClienteDTO[]) => {
-          this.clientesAsignados = (asignaciones || [])
+        next: (respuesta) => {
+          const asignaciones = respuesta.contenido || [];
+
+          this.clientesAsignados = asignaciones
             .filter(a => a.activo)
-            .map(a => ({
-              id: a.clienteId,
-              nombreCompleto: a.clienteNombre || 'Cliente sin nombre',
-              correo: a.clienteCorreo || '',
-              documento: a.clienteDocumento || '',
-            }));
+            .map(a => this.convertirAsignacionACliente(a));
 
           this.cargandoClientes = false;
           this.cdr.detectChanges();
@@ -119,26 +139,8 @@ export class Evaluaciones implements OnInit {
       });
   }
 
-  aplicarFiltros(): void {
-    const texto = this.normalizarTexto(this.terminoBusqueda);
-
-    if (!texto) {
-      this.evaluacionesFiltradas = [...this.evaluaciones];
-      return;
-    }
-
-    this.evaluacionesFiltradas = this.evaluaciones.filter(e => {
-      return (
-        this.normalizarTexto(e.clienteNombre).includes(texto) ||
-        this.normalizarTexto(e.entrenadorNombre).includes(texto) ||
-        this.normalizarTexto(e.observaciones).includes(texto) ||
-        this.normalizarTexto(e.fecha).includes(texto)
-      );
-    });
-  }
-
   buscarClientes(): void {
-    const texto = this.normalizarTexto(this.terminoBusquedaCliente);
+    const texto = this.terminoBusquedaCliente.trim();
 
     if (texto.length < 2) {
       this.clientesFiltrados = [];
@@ -146,15 +148,59 @@ export class Evaluaciones implements OnInit {
       return;
     }
 
-    this.clientesFiltrados = this.clientesAsignados.filter(cliente => {
-      return (
-        this.normalizarTexto(cliente.nombreCompleto).includes(texto) ||
-        this.normalizarTexto(cliente.documento).includes(texto) ||
-        this.normalizarTexto(cliente.correo).includes(texto)
-      );
-    });
+    this.asignacionesService.listarMisClientesPaginado(0, 20, texto)
+      .pipe(timeout(this.requestTimeoutMs))
+      .subscribe({
+        next: (respuesta) => {
+          this.clientesFiltrados = (respuesta.contenido || [])
+            .filter(a => a.activo)
+            .map(a => this.convertirAsignacionACliente(a));
 
-    this.cdr.detectChanges();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error buscando clientes asignados', err);
+          this.clientesFiltrados = [];
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  convertirAsignacionACliente(asignacion: AsignacionEntrenadorClienteDTO): any {
+    return {
+      id: asignacion.clienteId,
+      nombreCompleto: asignacion.clienteNombre || 'Cliente sin nombre',
+      correo: asignacion.clienteCorreo || '',
+      documento: asignacion.clienteDocumento || '',
+    };
+  }
+
+  aplicarFiltros(): void {
+    this.paginaActual = 0;
+    this.cargarEvaluaciones();
+  }
+
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
+      return;
+    }
+
+    this.paginaActual--;
+    this.cargarEvaluaciones();
+  }
+
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
+
+    this.paginaActual++;
+    this.cargarEvaluaciones();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarEvaluaciones();
   }
 
   seleccionarCliente(cliente: any): void {
@@ -243,6 +289,7 @@ export class Evaluaciones implements OnInit {
             this.mensajeExito = 'Evaluación física actualizada correctamente.';
             this.guardando = false;
             this.resetFormulario();
+            this.paginaActual = 0;
             this.cargarEvaluaciones();
           },
           error: (err) => {
@@ -263,6 +310,7 @@ export class Evaluaciones implements OnInit {
           this.mensajeExito = 'Evaluación física creada correctamente.';
           this.guardando = false;
           this.resetFormulario();
+          this.paginaActual = 0;
           this.cargarEvaluaciones();
         },
         error: (err) => {
@@ -370,6 +418,7 @@ export class Evaluaciones implements OnInit {
       return;
     }
 
+    this.paginaActual = 0;
     this.cargarEvaluaciones();
     this.cargarClientesAsignados();
   }
@@ -429,15 +478,6 @@ export class Evaluaciones implements OnInit {
   private construirTextoCliente(cliente: any): string {
     const documento = cliente?.documento ? ` - ${cliente.documento}` : '';
     return `${cliente?.nombreCompleto || 'Cliente'}${documento}`;
-  }
-
-  private normalizarTexto(texto: string | undefined | null): string {
-    return (texto || '')
-      .toString()
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
   }
 
   private obtenerMensajeError(err: any, mensajePorDefecto: string): string {

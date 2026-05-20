@@ -365,6 +365,188 @@
     background: rgba(239, 68, 68, 0.08);
     }
 
+    /* ---------- CATÁLOGO PAGINADO DE EJERCICIOS ---------- */
+
+    .catalogo-panel {
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border-radius: var(--ironfit-radius-lg, 1rem);
+        background: linear-gradient(145deg, #0f0f0f, #050505);
+        border: 1px solid var(--ironfit-border, rgba(255, 255, 255, 0.13));
+    }
+
+    .busqueda-container {
+        width: 100%;
+        max-width: 760px;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 1rem;
+    }
+
+    .input-busqueda {
+        flex: 1;
+        height: 44px;
+        border-radius: 999px;
+        padding: 0 1rem;
+        background: #0b0b0b;
+        color: var(--ironfit-text, #f5f5f5);
+        border: 1px solid var(--ironfit-border, rgba(255, 255, 255, 0.13));
+        outline: none;
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .input-busqueda::placeholder {
+        color: #737373;
+    }
+
+    .input-busqueda:focus {
+        border-color: rgba(255, 138, 31, 0.75);
+        box-shadow: 0 0 0 3px rgba(255, 138, 31, 0.12);
+    }
+
+    .btn-buscar-catalogo {
+        height: 44px;
+        border-radius: 999px;
+        padding: 0 1.2rem;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--ironfit-text, #f5f5f5);
+        border: 1px solid var(--ironfit-border, rgba(255, 255, 255, 0.13));
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+    }
+
+    .btn-buscar-catalogo:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 138, 31, 0.5);
+        transform: translateY(-1px);
+    }
+
+    .paginacion-catalogo {
+        margin-bottom: 1rem;
+        padding: 0.9rem 1rem;
+        border-radius: var(--ironfit-radius-lg, 1rem);
+        background: linear-gradient(145deg, #111111, #050505);
+        border: 1px solid var(--ironfit-border, rgba(255, 255, 255, 0.13));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .paginacion-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .paginacion-info span {
+        color: var(--ironfit-text, #f5f5f5);
+        font-size: 0.84rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .paginacion-info small {
+        color: var(--ironfit-text-muted, #9ca3af);
+        font-size: 0.76rem;
+        font-weight: 700;
+    }
+
+    .paginacion-controles {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+    }
+
+    .btn-paginacion {
+        border-radius: 999px;
+        padding: 0.58rem 1rem;
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #ff8a1f, #ff6b00);
+        color: #111111;
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .btn-paginacion:hover:not(:disabled) {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+    }
+
+    .btn-paginacion:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        filter: grayscale(0.4);
+    }
+
+    .select-paginacion {
+        height: 38px;
+        border-radius: 999px;
+        padding: 0 0.8rem;
+        background: #171717;
+        border: 1px solid rgba(255, 138, 31, 0.35);
+        color: var(--ironfit-text, #f5f5f5);
+        outline: none;
+        font-weight: 800;
+    }
+
+    .select-paginacion:focus {
+        border-color: #ff8a1f;
+    }
+
+    .catalogo-loading,
+    .catalogo-vacio {
+        margin-bottom: 1rem;
+    }
+
+    .catalogo-card small {
+        display: block;
+        margin-top: 0.25rem;
+        color: #777;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    @media (max-width: 1000px) {
+        .busqueda-container {
+            max-width: 100%;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .input-busqueda,
+        .btn-buscar-catalogo {
+            width: 100%;
+        }
+
+        .paginacion-catalogo {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .paginacion-controles {
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .btn-paginacion,
+        .select-paginacion {
+            flex: 1;
+        }
+    }
+
     @media (max-width: 1000px) {
     .rutina-ejercicios-page {
         padding: 1.2rem 1rem;

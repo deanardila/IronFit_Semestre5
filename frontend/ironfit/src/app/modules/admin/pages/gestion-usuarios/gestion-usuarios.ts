@@ -27,6 +27,14 @@ export class GestionUsuarios implements OnInit {
 
   terminoBusqueda = '';
 
+  paginaActual = 0;
+  tamanoPagina = 20;
+  totalElementos = 0;
+  totalPaginas = 0;
+  ultimaPagina = true;
+
+  opcionesTamanoPagina = [10, 20, 50, 100];
+
   cargando = false;
   vieneDeDashboard = false;
 
@@ -77,26 +85,69 @@ export class GestionUsuarios implements OnInit {
     this.cargando = true;
     this.cdr.detectChanges();
 
-    this.usuariosApi.getUsuariosResumen().pipe(
+    const rolFiltro = this.filtroTipo ? this.filtroTipo.toUpperCase() : null;
+    const activoFiltro = this.filtroEstado
+      ? this.filtroEstado === 'ACTIVO'
+      : null;
+
+    this.usuariosApi.getUsuariosPaginados(
+      this.paginaActual,
+      this.tamanoPagina,
+      this.terminoBusqueda,
+      rolFiltro,
+      activoFiltro
+    ).pipe(
       timeout(10000),
       finalize(() => {
         this.cargando = false;
         this.cdr.detectChanges();
       })
     ).subscribe({
-      next: (lista) => {
-        this.usuarios = lista ?? [];
-        this.entrenadoresActivos = this.usuarios.filter(
-          u => this.esEntrenador(u) && u.activo
-        );
+      next: (respuesta) => {
+        this.usuarios = respuesta.contenido ?? [];
+        this.usuariosFiltrados = this.usuarios;
 
+        this.totalElementos = respuesta.totalElementos ?? 0;
+        this.totalPaginas = respuesta.totalPaginas ?? 0;
+        this.ultimaPagina = respuesta.ultima ?? true;
+        this.paginaActual = respuesta.pagina ?? 0;
+        this.tamanoPagina = respuesta.tamano ?? this.tamanoPagina;
+
+        this.cargarEntrenadoresActivos();
         this.cargarAsignaciones();
       },
       error: (err) => {
-        console.error('Error cargando usuarios', err);
+        console.error('Error cargando usuarios paginados', err);
         this.usuarios = [];
         this.usuariosFiltrados = [];
         this.asignaciones = [];
+
+        this.totalElementos = 0;
+        this.totalPaginas = 0;
+        this.ultimaPagina = true;
+
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  cargarEntrenadoresActivos(): void {
+    this.usuariosApi.getUsuariosPaginados(
+      0,
+      100,
+      '',
+      'ENTRENADOR',
+      true
+    ).pipe(
+      timeout(10000)
+    ).subscribe({
+      next: (respuesta) => {
+        this.entrenadoresActivos = respuesta.contenido ?? [];
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error cargando entrenadores activos', err);
+        this.entrenadoresActivos = [];
         this.cdr.detectChanges();
       }
     });
@@ -108,75 +159,42 @@ export class GestionUsuarios implements OnInit {
     ).subscribe({
       next: (asignaciones) => {
         this.asignaciones = asignaciones || [];
-        this.aplicarFiltros();
         this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error cargando asignaciones', err);
         this.asignaciones = [];
-        this.aplicarFiltros();
         this.cdr.detectChanges();
       }
     });
   }
 
   aplicarFiltros(): void {
-    const tipoActual = this.filtroTipo;
-    const estadoActual = this.filtroEstado;
-    const busqueda = this.normalizarTexto(this.terminoBusqueda);
+    this.paginaActual = 0;
+    this.cargarUsuarios();
+  }
 
-    this.usuariosFiltrados = this.usuarios.filter(u => {
-      let coincideTipo = true;
-      let coincideEstado = true;
-      let coincideBusqueda = true;
-
-      if (tipoActual) {
-        const tipoBuscado = tipoActual.toUpperCase();
-
-        if (Array.isArray(u.roles) && u.roles.length > 0) {
-          coincideTipo = u.roles
-            .map(r => String(r).toUpperCase())
-            .some(r => r.includes(tipoBuscado));
-        } else {
-          coincideTipo = false;
-        }
-      }
-
-      if (estadoActual) {
-        const activoBuscado = estadoActual === 'ACTIVO';
-        coincideEstado = !!u.activo === activoBuscado;
-      }
-
-      if (busqueda) {
-        const numDoc = this.normalizarTexto((u as any).numDoc);
-        const nombres = this.normalizarTexto(u.nombres);
-        const apellidos = this.normalizarTexto(u.apellidos);
-        const correo = this.normalizarTexto(u.correo);
-        const nombreCompleto = this.normalizarTexto(`${u.nombres || ''} ${u.apellidos || ''}`);
-
-        coincideBusqueda =
-          numDoc.includes(busqueda) ||
-          nombres.includes(busqueda) ||
-          apellidos.includes(busqueda) ||
-          correo.includes(busqueda) ||
-          nombreCompleto.includes(busqueda);
-      }
-
-      return coincideTipo && coincideEstado && coincideBusqueda;
-    });
-
-    if (estadoActual && this.vieneDeDashboard && this.usuariosFiltrados.length === 0) {
-      this.filtroEstado = null;
-
-      this.usuariosFiltrados = this.usuarios.filter(u => {
-        if (!tipoActual) return true;
-
-        const tipoBuscado = tipoActual.toUpperCase();
-
-        return Array.isArray(u.roles) &&
-          u.roles.map(r => String(r).toUpperCase()).some(r => r.includes(tipoBuscado));
-      });
+  irPaginaAnterior(): void {
+    if (this.paginaActual <= 0) {
+      return;
     }
+
+    this.paginaActual--;
+    this.cargarUsuarios();
+  }
+
+  irPaginaSiguiente(): void {
+    if (this.ultimaPagina || this.paginaActual >= this.totalPaginas - 1) {
+      return;
+    }
+
+    this.paginaActual++;
+    this.cargarUsuarios();
+  }
+
+  cambiarTamanoPagina(): void {
+    this.paginaActual = 0;
+    this.cargarUsuarios();
   }
 
   abrirFormularioCrear(): void {
@@ -228,6 +246,7 @@ export class GestionUsuarios implements OnInit {
     this.usuariosApi.crearUsuario(payload).subscribe({
       next: () => {
         this.mostrarFormularioCrear = false;
+        this.paginaActual = 0;
         this.cargarUsuarios();
       },
       error: (err) => {
@@ -240,10 +259,8 @@ export class GestionUsuarios implements OnInit {
     const nuevoEstado = !usuario.activo;
 
     this.usuariosApi.cambiarEstado(usuario.id, nuevoEstado).subscribe({
-      next: (usuarioActualizado) => {
-        usuario.activo = usuarioActualizado.activo;
-        this.aplicarFiltros();
-        this.cdr.detectChanges();
+      next: () => {
+        this.cargarUsuarios();
       },
       error: (err) => {
         console.error('Error cambiando estado del usuario', err);
@@ -396,6 +413,7 @@ export class GestionUsuarios implements OnInit {
   }
 
   actualizar(): void {
+    this.paginaActual = 0;
     this.cargarUsuarios();
   }
 

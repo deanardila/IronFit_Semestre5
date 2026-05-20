@@ -94,13 +94,29 @@ export class DashboardCliente implements OnInit {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: '#f5f5f5' } }
+      legend: {
+        labels: {
+          color: '#f5f5f5'
+        }
+      }
     },
     scales: {
       r: {
-        ticks: { color: '#9ca3af', backdropColor: 'transparent' },
-        grid: { color: 'rgba(255,255,255,0.12)' },
-        pointLabels: { color: '#f5f5f5' }
+        min: 0,
+        beginAtZero: true,
+        ticks: {
+          color: '#9ca3af',
+          backdropColor: 'transparent'
+        },
+        grid: {
+          color: 'rgba(255,255,255,0.12)'
+        },
+        angleLines: {
+          color: 'rgba(255,255,255,0.12)'
+        },
+        pointLabels: {
+          color: '#f5f5f5'
+        }
       }
     }
   };
@@ -138,8 +154,6 @@ export class DashboardCliente implements OnInit {
       )
       .subscribe({
         next: (res) => {
-          console.log('Dashboard cliente recibido:', res);
-
           if (!res) {
             this.error = 'No se recibieron métricas del dashboard.';
             return;
@@ -172,24 +186,54 @@ export class DashboardCliente implements OnInit {
   }
 
   construirLineChart(datos: GraficoDatoDTO[], label: string): ChartConfiguration<'line'>['data'] {
+    const datosValidos = datos && datos.length > 0
+      ? datos
+      : [
+          { label: 'Sin datos', valor: 0 }
+        ];
+
     return {
-      labels: datos.map(d => d.label),
-      datasets: [{ data: datos.map(d => d.valor), label, tension: 0.35, fill: true, pointRadius: 4 }]
+      labels: datosValidos.map(d => d.label),
+      datasets: [{ data: datosValidos.map(d => d.valor), label, tension: 0.35, fill: true, pointRadius: 4 }]
     };
   }
 
   construirDoughnutChart(datos: GraficoDatoDTO[]): ChartConfiguration<'doughnut'>['data'] {
+    const datosValidos = this.tieneDatos(datos)
+      ? datos
+      : [
+          { label: 'Sin registros', valor: 1 }
+        ];
+
     return {
-      labels: datos.map(d => d.label),
-      datasets: [{ data: datos.map(d => d.valor) }]
+      labels: datosValidos.map(d => d.label),
+      datasets: [{ data: datosValidos.map(d => d.valor) }]
     };
   }
 
   construirRadarChart(datos: GraficoDatoDTO[], label: string): ChartConfiguration<'radar'>['data'] {
+    const datosValidos = this.tieneDatos(datos)
+      ? datos
+      : [
+          { label: 'Pecho', valor: 0 },
+          { label: 'Cintura', valor: 0 },
+          { label: 'Brazo', valor: 0 },
+          { label: 'Pierna', valor: 0 }
+        ];
+
     return {
-      labels: datos.map(d => d.label),
-      datasets: [{ data: datos.map(d => d.valor), label }]
+      labels: datosValidos.map(d => d.label),
+      datasets: [
+        {
+          data: datosValidos.map(d => d.valor),
+          label
+        }
+      ]
     };
+  }
+
+  private tieneDatos(datos: GraficoDatoDTO[] | undefined | null): boolean {
+    return !!datos && datos.length > 0 && datos.some(d => (d.valor ?? 0) > 0);
   }
 
   toggleMenu(): void {

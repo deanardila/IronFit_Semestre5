@@ -11,10 +11,17 @@
 				<input
 					type="text"
 					class="input-busqueda"
-					placeholder="🔍 Buscar por nombre, cliente o entrenador..."
+					placeholder="🔍 Buscar por nombre, cliente u objetivo..."
 					[(ngModel)]="terminoBusqueda"
-					(input)="aplicarFiltros()"
+					(keyup.enter)="aplicarFiltros()"
 				/>
+
+				<button
+					type="button"
+					class="btn-buscar-planes"
+					(click)="aplicarFiltros()">
+					Buscar
+				</button>
 			</div>
 
 			<button class="btn-crear-plan" (click)="toggleFormularioCrear()">
@@ -63,21 +70,20 @@
 					[(ngModel)]="formulario.fechaInicio"
 					[min]="modoEdicion ? null : minFechaPlan"
 					required
-					/>
+				/>
 			</div>
 
 			<div class="form-row">
 				<label>Fecha fin</label>
 				<input
-						type="date"
-						name="fechaFin"
-						[(ngModel)]="formulario.fechaFin"
-						[min]="formulario.fechaInicio || minFechaPlan"
-						required
-					/>
+					type="date"
+					name="fechaFin"
+					[(ngModel)]="formulario.fechaFin"
+					[min]="formulario.fechaInicio || minFechaPlan"
+					required
+				/>
 			</div>
 
-			<!-- NUEVO: buscador de cliente -->
 			<div class="form-row">
 				<label>Buscar cliente</label>
 				<input
@@ -95,17 +101,15 @@
 
 				<ul *ngIf="clientes.length > 0" class="lista-clientes">
 					<li
-					*ngFor="let cliente of clientes"
-					(click)="seleccionarCliente(cliente)"
-					class="item-cliente"
-					>
-					<strong>{{ cliente.nombres }} {{ cliente.apellidos }}</strong>
-					<span> - {{ cliente.numDoc || 'Sin documento' }}</span>
+						*ngFor="let cliente of clientes"
+						(click)="seleccionarCliente(cliente)"
+						class="item-cliente">
+						<strong>{{ cliente.nombres }} {{ cliente.apellidos }}</strong>
+						<span> - {{ cliente.numDoc || 'Sin documento' }}</span>
 					</li>
 				</ul>
 			</div>
 
-			<!-- NUEVO: cliente seleccionado -->
 			<div class="form-row" *ngIf="clienteSeleccionado">
 				<label>Cliente seleccionado</label>
 				<div class="cliente-seleccionado">
@@ -113,7 +117,6 @@
 					<span *ngIf="clienteSeleccionado.numDoc"> - {{ clienteSeleccionado.numDoc }}</span>
 				</div>
 			</div>
-
 
 			<div class="form-actions">
 				<button type="submit" [disabled]="guardando">
@@ -143,7 +146,6 @@
 		<table class="planes-tabla">
 			<thead>
 				<tr>
-					<th>ID</th>
 					<th>Nombre</th>
 					<th>Objetivo</th>
 					<th>Inicio</th>
@@ -154,9 +156,9 @@
 					<th>Acciones</th>
 				</tr>
 			</thead>
+
 			<tbody>
 				<tr *ngFor="let p of planesFiltrados">
-					<td>{{ p.id }}</td>
 					<td>{{ p.nombre }}</td>
 					<td>{{ p.objetivo }}</td>
 					<td>{{ p.fechaInicio }}</td>
@@ -177,25 +179,63 @@
 					<td>
 						<div class="acciones-tabla">
 							<button
-							type="button"
-							class="btn-editar-tabla"
-							(click)="editarPlan(p)"
-							[disabled]="guardando || cambiandoEstadoId === p.id">
-							Editar
+								type="button"
+								class="btn-editar-tabla"
+								(click)="editarPlan(p)"
+								[disabled]="guardando || cambiandoEstadoId === p.id">
+								Editar
 							</button>
 
 							<button
-							type="button"
-							class="btn-editar-tabla"
-							(click)="gestionarRutinas(p)"
-							[disabled]="guardando || cambiandoEstadoId === p.id">
-							Rutinas
+								type="button"
+								class="btn-editar-tabla"
+								(click)="gestionarRutinas(p)"
+								[disabled]="guardando || cambiandoEstadoId === p.id">
+								Rutinas
 							</button>
 						</div>
 					</td>
 				</tr>
 			</tbody>
 		</table>
+
+		<div class="paginacion-planes" *ngIf="totalElementos > 0">
+			<div class="paginacion-info">
+				<span>
+					Mostrando página {{ paginaActual + 1 }} de {{ totalPaginas || 1 }}
+				</span>
+				<small>
+					Total planes: {{ totalElementos }}
+				</small>
+			</div>
+
+			<div class="paginacion-controles">
+				<button
+					type="button"
+					class="btn-paginacion"
+					(click)="irPaginaAnterior()"
+					[disabled]="paginaActual === 0">
+					← Anterior
+				</button>
+
+				<select
+					class="select-paginacion"
+					[(ngModel)]="tamanoPagina"
+					(change)="cambiarTamanoPagina()">
+					<option *ngFor="let opcion of opcionesTamanoPagina" [ngValue]="opcion">
+						{{ opcion }} por página
+					</option>
+				</select>
+
+				<button
+					type="button"
+					class="btn-paginacion"
+					(click)="irPaginaSiguiente()"
+					[disabled]="ultimaPagina || paginaActual >= totalPaginas - 1">
+					Siguiente →
+				</button>
+			</div>
+		</div>
 	</section>
 
 </div>

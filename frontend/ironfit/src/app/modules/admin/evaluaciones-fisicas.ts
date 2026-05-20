@@ -2,14 +2,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-    export interface MedidasCorporalesDTO {
+export interface MedidasCorporalesDTO {
     pecho?: number | null;
     cintura?: number | null;
     brazo?: number | null;
     pierna?: number | null;
-    }
+}
 
-    export interface EvaluacionFisicaDTO {
+export interface EvaluacionFisicaDTO {
     id: string;
     clienteId: string;
     clienteNombre?: string;
@@ -24,9 +24,9 @@ import { Observable } from 'rxjs';
     observaciones?: string | null;
     fechaCreacion?: string;
     fechaActualizacion?: string;
-    }
+}
 
-    export interface EvaluacionFisicaRequestDTO {
+export interface EvaluacionFisicaRequestDTO {
     clienteId: string;
     fecha?: string | null;
     pesoCorporal: number | null;
@@ -37,12 +37,21 @@ import { Observable } from 'rxjs';
     brazo?: number | null;
     pierna?: number | null;
     observaciones?: string | null;
-    }
+}
 
-    @Injectable({
+export interface PaginaResponse<T> {
+    contenido: T[];
+    pagina: number;
+    tamano: number;
+    totalElementos: number;
+    totalPaginas: number;
+    ultima: boolean;
+}
+
+@Injectable({
     providedIn: 'root'
-    })
-    export class EvaluacionesFisicasService {
+})
+export class EvaluacionesFisicasService {
 
     private readonly apiUrl = 'https://ironfit-backend-production.up.railway.app/api/evaluaciones-fisicas';
 
@@ -50,6 +59,26 @@ import { Observable } from 'rxjs';
 
     listarEvaluaciones(): Observable<EvaluacionFisicaDTO[]> {
         return this.http.get<EvaluacionFisicaDTO[]>(this.apiUrl);
+    }
+
+    listarEvaluacionesPaginadas(
+        page: number,
+        size: number,
+        buscar?: string
+    ): Observable<PaginaResponse<EvaluacionFisicaDTO>> {
+        const params: any = {
+            page,
+            size
+        };
+
+        if (buscar && buscar.trim()) {
+            params.buscar = buscar.trim();
+        }
+
+        return this.http.get<PaginaResponse<EvaluacionFisicaDTO>>(
+            `${this.apiUrl}/paginado`,
+            { params }
+        );
     }
 
     crearEvaluacion(request: EvaluacionFisicaRequestDTO): Observable<EvaluacionFisicaDTO> {

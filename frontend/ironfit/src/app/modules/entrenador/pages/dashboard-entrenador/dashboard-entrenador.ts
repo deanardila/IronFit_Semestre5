@@ -124,7 +124,6 @@ export class DashboardEntrenador implements OnInit {
       )
       .subscribe({
         next: (res) => {
-          console.log('Dashboard entrenador recibido:', res);
 
           if (!res) {
             this.error = 'No se recibieron métricas del dashboard.';
@@ -157,24 +156,46 @@ export class DashboardEntrenador implements OnInit {
   }
 
   construirLineChart(datos: GraficoDatoDTO[], label: string): ChartConfiguration<'line'>['data'] {
+    const datosValidos = datos && datos.length > 0
+      ? datos
+      : [
+          { label: 'Sin datos', valor: 0 }
+        ];
+
     return {
-      labels: datos.map(d => d.label),
-      datasets: [{ data: datos.map(d => d.valor), label, tension: 0.35, fill: true, pointRadius: 4 }]
+      labels: datosValidos.map(d => d.label),
+      datasets: [{ data: datosValidos.map(d => d.valor), label, tension: 0.35, fill: true, pointRadius: 4 }]
     };
   }
 
   construirBarChart(datos: GraficoDatoDTO[], label: string): ChartConfiguration<'bar'>['data'] {
+    const datosValidos = datos && datos.length > 0
+      ? datos
+      : [
+          { label: 'Sin datos', valor: 0 }
+        ];
+
     return {
-      labels: datos.map(d => d.label),
-      datasets: [{ data: datos.map(d => d.valor), label }]
+      labels: datosValidos.map(d => d.label),
+      datasets: [{ data: datosValidos.map(d => d.valor), label }]
     };
   }
 
   construirDoughnutChart(datos: GraficoDatoDTO[]): ChartConfiguration<'doughnut'>['data'] {
+    const datosValidos = this.tieneDatos(datos)
+      ? datos
+      : [
+          { label: 'Sin registros', valor: 1 }
+        ];
+
     return {
-      labels: datos.map(d => d.label),
-      datasets: [{ data: datos.map(d => d.valor) }]
+      labels: datosValidos.map(d => d.label),
+      datasets: [{ data: datosValidos.map(d => d.valor) }]
     };
+  }
+
+  private tieneDatos(datos: GraficoDatoDTO[] | undefined | null): boolean {
+    return !!datos && datos.length > 0 && datos.some(d => (d.valor ?? 0) > 0);
   }
 
   toggleMenu(): void {
